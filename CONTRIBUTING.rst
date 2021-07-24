@@ -93,7 +93,7 @@ development. Please note this documentation assumes you already have
 
    .. code-block:: bash
 
-        $ pip install -rrequirements_dev.txt
+        $ pip install -r requirements_dev.txt
         $ python -m pytest
 
 
