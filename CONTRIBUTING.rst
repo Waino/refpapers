@@ -94,6 +94,7 @@ development. Please note this documentation assumes you already have
    .. code-block:: bash
 
         $ pip install -r requirements_dev.txt
+        $ mypy --install-types
         $ python -m pytest
 
 
