@@ -1,0 +1,22 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "refpapers"
+author = "Stig-Arne Grönroos"
+author-email = "stig.gronroos@gmail.com"
+classifiers = [ "License :: OSI Approved :: MIT License",
+                "Development Status :: 4 - Beta",
+                "Intended Audience :: Science/Research",
+                "Operating System :: OS Independent",
+                "Programming Language :: Python",
+                "Topic :: Scientific/Engineering", ]
+requires = []
+
+[tool.flit.scripts]
+refpapers = "refpapers:main"
+
+[tool.pytest.ini_options]
+addopts = "--flake8 -v --cov=refpapers --cov-report html --mypy"
+flake8-max-line-length = "120"
