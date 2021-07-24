@@ -92,8 +92,6 @@ def print_count(results):
         print(f'{found} of {flag}{total} hits')
     elif found > 1:
         print(f'{found} hits')
-    else:
-        print('No papers matched the query')
 
 
 def search(

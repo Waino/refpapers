@@ -116,6 +116,9 @@ def subcommand_search(query: str, nogroup: bool, sort: str, confdir: Path):
     papers = list(search(query, conf, decisions))
     if sort:
         papers = sorted(papers, key=lambda x: x.__getattribute__(sort))
+    if len(papers) == 0:
+        print('No papers matched the query')
+        return
     if nogroup:
         print_list(papers)
     else:
