@@ -1,0 +1,169 @@
+from itertools import groupby
+from rich.console import Console
+from rich.table import Table
+from rich.theme import Theme
+from rich.text import Text
+from typing import List, Iterable, Union, Optional
+
+from refpapers.schema import Paper, BibtexKey, IndexingAction
+
+Renderable = Union[str, Text]
+
+MAX_LEN_AUTHORS = 50
+
+THEME = Theme({
+    'authors': 'bold black',
+    'authors.first': 'white',
+    'bib': 'dim cyan',
+    'year': 'bold white',
+    'title.even': 'white',
+    'title.odd': 'bold black',
+    'thesis': 'red',
+    'survey': 'bold white',
+    'heading': 'bold cyan',
+    'path': 'bold black',
+    'prompt': 'bold white',
+    'status': 'bold black',
+    'status.hi': 'white',
+    'choice': 'red',
+    'staged': 'red',
+    'untracked': 'yellow',
+    'action': 'bold white',
+    'warning': 'bold red',
+    'rule.line': 'dim cyan',
+})
+console = Console(theme=THEME)
+
+
+PUB_TYPE_FLAGS = {
+    'book': 'B',
+    'slides': 'Pres',
+    'survey': '[survey]S[/survey]',
+    'thesis': '[thesis]T[/thesis]',
+}
+
+
+def blending_columns(left: Renderable, right: Renderable) -> Table:
+    """ Produces a single renderable
+    that allows two columns to blend into each other """
+    grid = Table.grid(expand=True)
+    grid.add_column()
+    grid.add_column(max_width=2)
+    grid.add_column(justify="right")
+    grid.add_row(left, '  ', right)
+    return grid
+
+
+def render_authors(authors: List[str], truncate=True) -> str:
+    out = ['[authors.first]{}[/authors.first]'.format(authors[0])]
+    if len(authors) > 1:
+        out.append('[authors], ')
+        if truncate and len(', '.join(authors)) > MAX_LEN_AUTHORS:
+            out.append('etAl')
+        else:
+            out.append(', '.join(authors[1:]))
+    return ''.join(out)
+
+
+def render_bibtex(bibtex: BibtexKey) -> str:
+    return f'[bib]{bibtex.author}[/bib][year]{bibtex.year}[/year][bib]{bibtex.word}[/bib]'
+
+
+def render_list_item(paper: Paper, i: int, grid: Table) -> None:
+    even = 'even' if i % 2 == 0 else 'odd'
+    flags = ''.join(PUB_TYPE_FLAGS.get(pub_type, '') for pub_type in paper.pub_type)
+    authors = render_authors(paper.authors)
+    left = blending_columns(
+        authors,
+        Text(paper.bibtex.author, style='bib', no_wrap=True)
+    )
+    mid = Text(str(paper.bibtex.year), style='year')
+    right = blending_columns(
+        Text(paper.bibtex.word, style='bib', no_wrap=True),
+        flags
+    )
+    grid.add_row(left, mid, right, ' ', Text(paper.title, style=f'title.{even}'))
+
+
+def print_list_section(papers: Iterable[Paper], right_width: int) -> None:
+    grid = Table.grid(expand=True)
+    grid.add_column(ratio=1)                    # left: authors, bibauthor
+    grid.add_column(min_width=4, max_width=4)   # mid: year
+    grid.add_column(min_width=right_width)      # right: bibword, flags
+    grid.add_column(max_width=1)                # padding
+    grid.add_column(ratio=2)                    # title
+    for (i, paper) in enumerate(papers):
+        render_list_item(paper, i, grid)
+    console.print(grid)
+
+
+def print_section_heading(heading: Union[str, List[str]], field: str = None) -> None:
+    if field == 'tags':
+        heading = ' / '.join(heading)
+    console.rule(f'[rule.line]─ [heading]{heading}[/heading]', align='left')
+
+
+def print_list(papers: List[Paper], grouped=None) -> None:
+    if len(papers) == 0:
+        return
+    longest_bibword = max(len(paper.bibtex.word) for paper in papers)
+    right_width = longest_bibword + 2 + len('Pres')
+    if grouped:
+        for key, group in groupby(papers, key=lambda x: x.__getattribute__(grouped)):
+            print_section_heading(key, grouped)
+            print_list_section(group, right_width)
+    else:
+        print_list_section(papers, right_width)
+
+
+def print_details(paper: Paper) -> None:
+    print_section_heading(paper.title, 'title')
+    if len(str(paper.path)) >= console.size.width:
+        console.print(Text(str(paper.path), style='path', overflow='ignore'), crop=False)
+    else:
+        console.print(Text(str(paper.path), style='path', justify='right'))
+    grid = Table.grid(expand=True)
+    grid.add_column(max_width=2)    # indent
+    grid.add_column(ratio=4)        # bibtex
+    grid.add_column(ratio=10)       # authors
+    grid.add_column(ratio=1)        # year
+    grid.add_column(ratio=2)        # pub_type
+    grid.add_column(ratio=5)        # paper.tags
+    grid.add_row(
+        '  ',
+        render_bibtex(paper.bibtex),
+        render_authors(paper.authors, truncate=False),
+        str(paper.year),
+        ', '.join(paper.pub_type),
+        ' / '.join(paper.tags),
+    )
+    console.print(grid)
+
+
+def expand_choice(prefix: str, choices: List[str]) -> Optional[str]:
+    for choice in choices:
+        if choice.startswith(prefix):
+            return choice
+    return None
+
+
+def question(prompt: str, choices: List[str]) -> Optional[str]:
+    assert len(set(choice[0] for choice in choices)) == len(choices), \
+        'Choices must have unique first chars'
+    text = [f'[prompt]{prompt}:[/prompt]']
+    for choice in choices:
+        text.append(f' [choice]({choice[0]})[/choice]{choice[1:]}')
+    text.append(' ? ')
+    prefix = console.input(''.join(text))
+    expanded = expand_choice(prefix, choices)
+    return expanded
+
+
+def get_str(prompt: str) -> str:
+    return console.input(f'[prompt]{prompt}:[/prompt] ')
+
+
+def print_git_indexingaction(ia: IndexingAction, phase: str):
+    action_map = {'A': 'added', 'M': 'modified', 'D': 'deleted', '??': 'untracked'}
+    expanded = action_map.get(ia.action, ia.action)
+    console.print(f'[{phase.lower()}]{phase}[/{phase.lower()}] [action]{expanded}[/action] {ia.paper}')

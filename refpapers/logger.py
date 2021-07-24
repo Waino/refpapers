@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 logger = logging.getLogger('refpapers')
 logger.setLevel(logging.INFO)
@@ -12,9 +13,10 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-# file handler
-fh = logging.FileHandler('FIXME.log')
-fh.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(module)s/%(funcName)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-logger.addHandler(fh)
+
+def add_file_handler(log_path: Path):
+    fh = logging.FileHandler(log_path)
+    fh.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(module)s/%(funcName)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
