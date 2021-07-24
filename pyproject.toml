@@ -22,7 +22,7 @@ requires = [
 ]
 
 [tool.flit.scripts]
-refpapers = "refpapers:main"
+refpapers = "refpapers:cli"
 
 [tool.pytest.ini_options]
 addopts = "--flake8 -v --cov=refpapers --cov-report html --mypy"
