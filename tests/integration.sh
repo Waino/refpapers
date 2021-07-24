@@ -32,6 +32,10 @@ ${DATA_DIR}
 ${INDEX_DIR}
 CREATEMINIMAL
 
+echo ""
+echo "### Perform a search (expecting 2 results)"
+refpapers search --confdir "${CONF_DIR}" author
+
 popd
 #rm -r "${TESTING_DIR}"
 echo ""

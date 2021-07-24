@@ -23,7 +23,7 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
 
     start = datetime.now()
     w = ix.writer()
-    for ia in track(papers, description="Indexing..."):
+    for ia in track(papers, description='Indexing...'):
         if ia.paper is None:
             continue
         if not isinstance(ia.paper, Paper):
@@ -37,18 +37,20 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
                 logger.info(f'Skipping this file (was too slow previously): {path}')
             else:
                 body = extract_fulltext(paper.path, conf, decisions)
-            w.add_document(
-                    path=path,
-                    bibtex=str(paper.bibtex),
-                    title=paper.title,
-                    comment='',
-                    authors=', '.join(paper.authors),
-                    year=paper.year,
-                    body=body,
-                    pub_type=' '.join(paper.pub_type),
-                    tags=' '.join(paper.tags),
-                    number=paper.number,
-            )
+            fields = {
+                'path': path,
+                'bibtex': str(paper.bibtex),
+                'title': paper.title,
+                'comment': '',
+                'authors': ', '.join(paper.authors),
+                'year': paper.year,
+                'body': body,
+                'pub_type': ' '.join(paper.pub_type),
+                'tags': ' '.join(paper.tags),
+            }
+            if paper.number:
+                fields['number'] = paper.number
+            w.add_document(**fields)
     w.commit()
     decisions.write()
     delta = datetime.now() - start
@@ -65,6 +67,7 @@ def result_to_paper(result) -> Paper:
         pub_type = result['pub_type'].split(' ')
     else:
         pub_type = []
+    number = result.get('number', None)
     return Paper(
         path=Path(result['path']),
         bibtex=BibtexKey.parse(result['bibtex']),
@@ -73,7 +76,7 @@ def result_to_paper(result) -> Paper:
         year=result['year'],
         pub_type=pub_type,
         tags=result['tags'].split(' '),
-        number=result['number'],
+        number=number,
     )
 
 
