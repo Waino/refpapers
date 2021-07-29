@@ -55,6 +55,7 @@ def index(full: bool, confdir: Path) -> None:
     if full:
         actions = list(yield_actions(conf.paths.data, conf, decisions))
     else:
+        console.print(f'[status]Performing incremental indexing from commit {commit}')
         actions = git_difftree(conf.paths.data, commit)
         if not (conf.git_uncommitted == GitNew.IGNORE and conf.git_untracked == GitNew.IGNORE):
             staged: List[IndexingAction]
