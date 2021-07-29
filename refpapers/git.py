@@ -21,7 +21,7 @@ def current_commit(gitdir: Path) -> str:
 def git_difftree(gitdir: Path, commit: str) -> List[IndexingAction]:
     """ Parses the git diff-tree command to retrieve changes between
     the last indexed commit and HEAD """
-    result = delegator.run(f'git -C {gitdir} diff-tree --name-status -z {commit} HEAD')
+    result = delegator.run(f'git -C {gitdir} diff-tree -r --name-status -z {commit} HEAD')
     if not result.return_code == 0:
         raise Exception(f'failed {result} {result.err}')
     fields = null_delimited(result.out)
