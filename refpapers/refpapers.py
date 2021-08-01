@@ -115,15 +115,14 @@ def subcommand_search(query: str, nogroup: bool, sort: str, confdir: Path):
     conf, storedstate, decisions = load_conf(confdir)
     query = ' '.join(query)
     papers = list(search(query, conf, decisions))
-    if sort:
-        papers = sorted(papers, key=lambda x: x.__getattribute__(sort))
     if len(papers) == 0:
         print('No papers matched the query')
         return
+    if sort:
+        papers = sorted(papers, key=lambda x: x.__getattribute__(sort))
     if nogroup:
         print_list(papers)
     else:
-        papers = sorted(papers, key=lambda x: x.tags)
         print_list(papers, 'tags')
 
 

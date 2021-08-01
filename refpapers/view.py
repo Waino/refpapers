@@ -3,7 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.theme import Theme
 from rich.text import Text
-from typing import List, Iterable, Union, Optional
+from typing import List, Iterable, Union, Optional, Tuple
 
 from refpapers.schema import Paper, BibtexKey, IndexingAction
 
@@ -97,10 +97,30 @@ def print_list_section(papers: Iterable[Paper], right_width: int) -> None:
     console.print(grid)
 
 
-def print_section_heading(heading: Union[str, List[str]], field: str = None) -> None:
+def print_section_heading(heading: Union[str, Iterable[str]], field: str = None) -> None:
     if field == 'tags':
         heading = ' / '.join(heading)
     console.rule(f'[rule.line]─ [heading]{heading}[/heading]', align='left')
+
+
+def sorted_groups(papers: List[Paper], grouping_key) -> List[Tuple[str, List[Paper]]]:
+    ranked_papers = sorted(enumerate(papers), key=lambda x: x[1].__getattribute__(grouping_key))
+    grouped = groupby(ranked_papers, key=lambda x: x[1].__getattribute__(grouping_key))
+    grouped_dict = {}
+    group_scores = []
+    for key, ranked_group in grouped:
+        key = tuple(key)
+        print(f'key: {key}')
+        group_ranks, group_papers = zip(*ranked_group)
+        # the group score combines the best rank and the average rank
+        group_score = min(group_ranks) + (sum(group_ranks) / len(group_ranks))
+        group_scores.append((group_score, key))
+        grouped_dict[key] = group_papers
+    result = []
+    for group_score, key in sorted(group_scores):
+        print(group_score, key)
+        result.append((key, grouped_dict[key]))
+    return result
 
 
 def print_list(papers: List[Paper], grouped=None) -> None:
@@ -109,7 +129,7 @@ def print_list(papers: List[Paper], grouped=None) -> None:
     longest_bibword = max(len(paper.bibtex.word) for paper in papers)
     right_width = longest_bibword + 2 + len('Pres')
     if grouped:
-        for key, group in groupby(papers, key=lambda x: x.__getattribute__(grouped)):
+        for key, group in sorted_groups(papers, grouped):
             print_section_heading(key, grouped)
             print_list_section(group, right_width)
     else:
