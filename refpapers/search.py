@@ -28,15 +28,19 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
             continue
         if not isinstance(ia.paper, Paper):
             raise Exception(f'Indexing requires a Paper, not a {type(ia.paper).__name__}')
+
+        paper = ia.paper
+        if paper is None:
+            continue
+        assert paper.path.is_absolute(), f'Relative path in indexing: {paper.path}'
+        path = str(paper.path)
+
         if ia.action == 'A':
-            paper = ia.paper
-            if paper is None:
-                continue
-            path = str(paper.path)
             if path in too_slow:
                 logger.info(f'Skipping this file (was too slow previously): {path}')
             else:
                 body = extract_fulltext(paper.path, conf, decisions)
+            print(f'adding {path}')
             fields = {
                 'path': path,
                 'bibtex': str(paper.bibtex),
@@ -51,6 +55,9 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
             if paper.number:
                 fields['number'] = paper.number
             w.add_document(**fields)
+        elif ia.action == 'D':
+            print(f'deleting {path}')
+            w.delete_by_term('path', path)
     w.commit()
     decisions.write()
     delta = datetime.now() - start

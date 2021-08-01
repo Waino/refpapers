@@ -25,7 +25,7 @@ def git_difftree(gitdir: Path, commit: str) -> List[IndexingAction]:
     if not result.return_code == 0:
         raise Exception(f'failed {result} {result.err}')
     fields = null_delimited(result.out)
-    actions = list(parse_difftree(fields))
+    actions = list(parse_difftree(fields, gitdir))
     return actions
 
 
@@ -33,11 +33,11 @@ def null_delimited(output: str) -> Generator[str, None, None]:
     yield from output.split('\0')
 
 
-def parse_difftree(fields: Iterator[str]) -> Generator[IndexingAction, None, None]:
+def parse_difftree(fields: Iterator[str], gitdir: Path) -> Generator[IndexingAction, None, None]:
     try:
         while True:
             action = next(fields)
-            path = Path(next(fields))
+            path = gitdir / Path(next(fields))
             yield IndexingAction(action, path)
     except StopIteration:
         pass
@@ -56,7 +56,7 @@ def git_status(gitdir: Path) -> Tuple[List[IndexingAction], List[IndexingAction]
             continue
         try:
             action, path_str = line.split(None, 1)
-            path = Path(path_str)
+            path = gitdir / Path(path_str)
             if action in ('M', 'A'):
                 staged.append(IndexingAction(action, path))
             elif action == '??':
