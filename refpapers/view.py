@@ -110,7 +110,6 @@ def sorted_groups(papers: List[Paper], grouping_key) -> List[Tuple[str, List[Pap
     group_scores = []
     for key, ranked_group in grouped:
         key = tuple(key)
-        print(f'key: {key}')
         group_ranks, group_papers = zip(*ranked_group)
         # the group score combines the best rank and the average rank
         group_score = min(group_ranks) + (sum(group_ranks) / len(group_ranks))
@@ -118,7 +117,6 @@ def sorted_groups(papers: List[Paper], grouping_key) -> List[Tuple[str, List[Pap
         grouped_dict[key] = group_papers
     result = []
     for group_score, key in sorted(group_scores):
-        print(group_score, key)
         result.append((key, grouped_dict[key]))
     return result
 

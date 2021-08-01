@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
-from whoosh.analysis import StemmingAnalyzer  # type: ignore
+from whoosh.analysis import StemmingAnalyzer, RegexTokenizer  # type: ignore
 from whoosh.fields import Schema, TEXT, KEYWORD, ID, NUMERIC  # type: ignore
 
 RE_BIBTEX = re.compile('^([a-z].*)([0-9]{4})([a-z].*)$')
@@ -59,13 +59,16 @@ class IndexingAction:
 
 SCHEMA_VERSION = 'v0.1'
 
+# Tokenize bibtex key alphabetic and numeric parts separately
+rt = RegexTokenizer(r'([a-z]+|[0-9]+)')
+
 whoosh_schema = Schema(
     path=ID(stored=True),
-    bibtex=ID(stored=True),
-    title=TEXT(stored=True, field_boost=10.0),
-    comment=TEXT(stored=True, field_boost=10.0),
-    authors=KEYWORD(stored=True, commas=True, lowercase=True, scorable=True, field_boost=20.0),
-    year=NUMERIC(stored=True, signed=False, sortable=True),
+    bibtex=TEXT(stored=True, analyzer=rt, field_boost=100.0),
+    title=TEXT(stored=True, field_boost=30.0),
+    comment=TEXT(stored=True, field_boost=30.0),
+    authors=KEYWORD(stored=True, commas=True, lowercase=True, scorable=True, field_boost=60.0),
+    year=NUMERIC(stored=True, signed=False, sortable=True, field_boost=30.0),
     body=TEXT(analyzer=StemmingAnalyzer()),
     pub_type=KEYWORD(stored=True),
     tags=KEYWORD(stored=True),

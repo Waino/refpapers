@@ -98,7 +98,7 @@ def search(
     query: str, conf: Conf, decisions: Decisions, limit=10, fields: List[str] = None
 ) -> Generator[Paper, None, None]:
     if fields is None:
-        fields = ["authors", "title", "comment", "body"]
+        fields = ["bibtex", "authors", "title", "comment", "body"]
     ix = index.open_dir(conf.paths.index)
     qp = qparser.MultifieldParser(fields, schema=whoosh_schema)
     q = qp.parse(query)
