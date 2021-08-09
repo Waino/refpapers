@@ -108,13 +108,15 @@ def index(full: bool, confdir: Path) -> None:
 @click.option('--sort',
               type=click.Choice(Paper.__dataclass_fields__.keys()),  # type: ignore
               help='Sort by field (default: order of relevance)')
+@click.option('--limit', type=int, default=10,
+              help='Maximum number of results to show')
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')
-def subcommand_search(query: str, nogroup: bool, sort: str, confdir: Path):
+def subcommand_search(query: str, nogroup: bool, sort: str, limit: int, confdir: Path):
     conf, storedstate, decisions = load_conf(confdir)
     query = ' '.join(query)
-    papers = list(search(query, conf, decisions))
+    papers = list(search(query, conf, decisions, limit=limit))
     if len(papers) == 0:
         print('No papers matched the query')
         return
