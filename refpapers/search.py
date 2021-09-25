@@ -87,8 +87,8 @@ def deduplicate(papers: List[IndexingAction], conf) -> List[IndexingAction]:
             # only deduplicate adds
             result.append(ia)
             continue
-        if len(list(search(str(ia.paper.path), conf=conf, decisions=None, limit=1, fields=['path']))) > 0:
-            print(f'Path already indexed: {ia.paper.path}')
+        if len(list(search(str(ia.path), conf=conf, decisions=None, limit=1, fields=['path']))) > 0:
+            print(f'Path already indexed: {ia.path}')
             continue
         result.append(ia)
     return result

@@ -43,7 +43,7 @@ def cli() -> None:
     pass
 
 
-@cli.command(help='Refresh the search index')
+@cli.command(help='Refresh the search index')  # type: ignore
 @click.option('--full', is_flag=True,
               help='Perform a full indexing, as opposed to incremental.')
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
@@ -118,7 +118,7 @@ def index(full: bool, confdir: Path) -> None:
         storedstate.write('last_indexed_commit', commit)
 
 
-@cli.command(name='search', help='Search for papers')
+@cli.command(name='search', help='Search for papers')  # type: ignore
 @click.argument('query', type=str, nargs=-1)
 @click.option('--nogroup', is_flag=True,
               help='Do not group by tags')
@@ -145,7 +145,7 @@ def subcommand_search(query: str, nogroup: bool, sort: str, limit: int, confdir:
         print_list(papers, 'tags')
 
 
-@cli.command(help='Show details of one paper')
+@cli.command(help='Show details of one paper')  # type: ignore
 @click.argument('query', type=str, nargs=-1)
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
@@ -160,7 +160,7 @@ def one(query: str, confdir: Path) -> None:
         print('No papers matched the query')
 
 
-@cli.command(name='open', help='Open one paper in viewer')
+@cli.command(name='open', help='Open one paper in viewer')  # type: ignore
 @click.argument('query', type=str, nargs=-1)
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
@@ -179,7 +179,7 @@ def subcommand_open(query: Iterable[str], confdir: Path) -> None:
     delegator.run(f'{viewer} {path}', block=False)
 
 
-@cli.command(help='Check for data issues')
+@cli.command(help='Check for data issues')  # type: ignore
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')

@@ -3,7 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.theme import Theme
 from rich.text import Text
-from typing import List, Iterable, Union, Optional, Tuple
+from typing import List, Iterable, Union, Optional, Tuple, Dict
 
 from refpapers.schema import Paper, BibtexKey, IndexingAction
 
@@ -106,16 +106,16 @@ def print_section_heading(heading: Union[str, Iterable[str]], field: str = None)
 def sorted_groups(papers: List[Paper], grouping_key) -> List[Tuple[str, List[Paper]]]:
     ranked_papers = sorted(enumerate(papers), key=lambda x: x[1].__getattribute__(grouping_key))
     grouped = groupby(ranked_papers, key=lambda x: x[1].__getattribute__(grouping_key))
-    grouped_dict = {}
-    group_scores = []
+    grouped_dict: Dict[str, List[Paper]] = {}
+    group_scores: List[Tuple[float, str]] = []
     for key, ranked_group in grouped:
         key = tuple(key)
         group_ranks, group_papers = zip(*ranked_group)
         # the group score combines the best rank and the average rank
         group_score = min(group_ranks) + (sum(group_ranks) / len(group_ranks))
         group_scores.append((group_score, key))
-        grouped_dict[key] = group_papers
-    result = []
+        grouped_dict[key] = list(group_papers)
+    result: List[Tuple[str, List[Paper]]] = []
     for group_score, key in sorted(group_scores):
         result.append((key, grouped_dict[key]))
     return result
