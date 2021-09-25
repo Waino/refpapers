@@ -64,6 +64,10 @@ def git_status(gitdir: Path) -> Tuple[List[IndexingAction], List[IndexingAction]
             elif action == 'D':
                 # ignoring uncommitted deletions
                 pass
+            elif action == 'R':
+                from_path, to_path = path_str.split(' -> ', 1)
+                staged.append(IndexingAction('D', gitdir / Path(from_path)))
+                staged.append(IndexingAction('A', gitdir / Path(to_path)))
             else:
                 logger.warning(f'Did not understand git status: "{line}"')
         except Exception:

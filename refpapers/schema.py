@@ -6,6 +6,8 @@ from whoosh.analysis import StemmingAnalyzer, RegexTokenizer  # type: ignore
 from whoosh.fields import Schema, TEXT, KEYWORD, ID, NUMERIC  # type: ignore
 
 RE_BIBTEX = re.compile('^([a-z].*)([0-9]{4})([a-z].*)$')
+RE_TITLE_WORD = re.compile('^([a-z].*)$')
+SKIP_TITLE_WORDS = {'a', 'the'}
 
 
 @dataclass
@@ -21,6 +23,17 @@ class BibtexKey:
             raise ValueError(f'Unable to parse BibtexKey {string}')
         author, year, word = m.groups()
         return cls(author, int(year), word)
+
+    @staticmethod
+    def title_word(title):
+        for word in title.split():
+            word = word.lower()
+            if not RE_TITLE_WORD.match(word):
+                continue
+            if word in SKIP_TITLE_WORDS:
+                continue
+            return word
+        return ''
 
     def __str__(self):
         return f'{self.author}{self.year}{self.word}'

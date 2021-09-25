@@ -88,7 +88,7 @@ def test_uncamel(inp, expected):
 )
 def test_parse_generate(path):
     root = 'r'
-    paper = parse(Path(path), root)
+    paper, error = parse(Path(path), root)
     out = generate(paper, root)
     assert out == path, f'{path}\n -> {paper}\n -> {out}'
 
@@ -104,20 +104,21 @@ def test_parse_generate(path):
 )
 def test_parse_errors(path):
     root = 'r'
-    paper = parse(Path(path), root)
+    paper, error = parse(Path(path), root)
     assert paper is None
+    assert error is not None
 
 
 def test_suffix():
     root = 'r'
-    assert parse(Path('r/A_-_T_2021.pdf'), root).suffix == '.pdf'
-    assert parse(Path('r/A_-_T_2021.djvu'), root).suffix == '.djvu'
+    assert parse(Path('r/A_-_T_2021.pdf'), root)[0].suffix == '.pdf'
+    assert parse(Path('r/A_-_T_2021.djvu'), root)[0].suffix == '.djvu'
 
 
 def test_path():
     root = 'r'
     path = Path('r/A_-_T_2021.pdf')
-    paper = parse(path, root)
+    paper, error = parse(path, root)
 
     ia_path = IndexingAction('A', path)
     ia_paper = IndexingAction('A', paper)

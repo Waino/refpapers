@@ -1,8 +1,9 @@
 import re
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from functools import lru_cache
-from typing import List, Match, Generator, Iterable, Optional
+from typing import List, Match, Generator, Iterable, Optional, Tuple
 
 from refpapers.logger import logger
 from refpapers.conf import Decisions, Conf
@@ -20,6 +21,7 @@ RE_CAMEL = re.compile(r'([^A-Z])([A-Z])')
 RE_A_FOO = re.compile(r'(?<![A-Z])(A)([A-Z])')
 RE_MULTISPACE = re.compile(r'  *')
 
+SEPARATOR = '_-_'
 FMT_PARSE_ERROR = 'Unable to parse filename: {reason:18} - {file_path}'
 
 
@@ -89,39 +91,57 @@ def _uncamel(m: Match) -> str:
     return '{} {}'.format(m.group(1), m.group(2).lower())
 
 
-def parse(file_path: Path, root: Path) -> Optional[Paper]:
+@dataclass
+class ParseError:
+    path: Path
+    reason: str
+
+    def describe(self):
+        return f'{self.reason:18} - {self.path}'
+
+
+def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseError]]:
     dir_path, file_name = os.path.split(file_path)
     tags = dir_path.split(os.path.sep)
     # remove root dir from tags
     tags = tags[len(str(root).split(os.path.sep)):]
     try:
-        authors_part, title = file_name.split('_-_')
+        authors_part, title = file_name.split(SEPARATOR)
     except ValueError:
+        reason_raw = f'missing separator "{SEPARATOR}"'
+        reason_fmt = f'missing separator "[warning]{SEPARATOR}[/warning]"'
         logger.warning(FMT_PARSE_ERROR.format(
-            reason='no separator', file_path=file_path
+            reason=reason_raw, file_path=file_path
         ))
-        return None
+        return None, ParseError(file_path, reason_fmt)
     authors = authors_part.split('_')
     number: Optional[str] = None
     if RE_NUMBER.match(authors[0]):
         number = authors[0]
         authors = authors[1:]
     if len(authors) == 0:
+        reason_raw = 'no authors'
+        reason_fmt = '[warning]no authors[/warning]'
         logger.warning(FMT_PARSE_ERROR.format(
-            reason='no authors', file_path=file_path
+            reason=reason_raw, file_path=file_path
         ))
-        return None
+        return None, ParseError(file_path, reason_fmt)
     if any(not RE_NAME.match(author) for author in authors):
+        authors_joined = ', '.join(authors)
+        reason_raw = f'non-name author in {authors_joined}'
+        reason_fmt = f'non-name author in [warning]{authors_joined}[/warning]'
         logger.warning(FMT_PARSE_ERROR.format(
-            reason=f'non-name author in {authors}', file_path=file_path
+            reason=reason_raw, file_path=file_path
         ))
-        return None
+        return None, ParseError(file_path, reason_fmt)
     m = RE_MAIN.match(title)
     if not m:
+        reason_raw = 'no year'
+        reason_fmt = '[warning]no year[/warning]'
         logger.warning(FMT_PARSE_ERROR.format(
-            reason='no year', file_path=file_path
+            reason=reason_raw, file_path=file_path
         ))
-        return None
+        return None, ParseError(file_path, reason_fmt)
     title = m.group(1)
     pub_type = []
     if RE_BOOK.findall(title):
@@ -140,9 +160,20 @@ def parse(file_path: Path, root: Path) -> Optional[Paper]:
     title = uncamel(title)
     title = RE_MULTISPACE.sub(' ', title)
     year = int(m.group(2)[-4:])
-    bibtex = BibtexKey(authors[0].lower(), year, title.split()[0].lower())
-    return Paper(
-        file_path, bibtex, title, authors, year, pub_type, tags, number
+    bibtex = BibtexKey(authors[0].lower(), year, BibtexKey.title_word(title))
+    try:
+        BibtexKey.parse(str(bibtex))
+    except Exception:
+        reason_raw = f'invalid BibTex key {bibtex}'
+        reason_fmt = f'invalid BibTex key [warning]{bibtex}[/warning]'
+        logger.warning(FMT_PARSE_ERROR.format(
+            reason=reason_raw, file_path=file_path
+        ))
+        return None, ParseError(file_path, reason_fmt)
+
+    return (
+        Paper(file_path, bibtex, title, authors, year, pub_type, tags, number),
+        None
     )
 
 

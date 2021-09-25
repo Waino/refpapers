@@ -2,6 +2,7 @@
 
 import click
 import delegator  # type: ignore
+import logging
 import os
 from pathlib import Path
 from typing import List, Iterable
@@ -9,6 +10,7 @@ from typing import List, Iterable
 from refpapers.conf import ensure_conf, load_conf, Conf, GitNew, DEFAULT_CONFDIR
 from refpapers.filesystem import yield_actions, parse, apply_all_filters
 from refpapers.git import current_commit, git_difftree, git_status
+from refpapers.logger import ch
 from refpapers.schema import Paper, IndexingAction, SCHEMA_VERSION
 from refpapers.search import index_data, search
 from refpapers.view import (
@@ -100,7 +102,7 @@ def index(full: bool, confdir: Path) -> None:
 
     papers = []
     for ia in actions:
-        paper = parse(ia.path, conf.paths.data)
+        paper, error = parse(ia.path, conf.paths.data)
         if not paper:
             continue
         papers.append(IndexingAction(ia.action, paper))
@@ -182,9 +184,10 @@ def subcommand_open(query: Iterable[str], confdir: Path) -> None:
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')
 def check(confdir: Path) -> None:
+    ch.setLevel(logging.ERROR)
     ensure_conf(confdir)
     conf, storedstate, decisions = load_conf(confdir)
-    actions = yield_actions(conf.paths.data, conf, decisions)
+    actions = list(yield_actions(conf.paths.data, conf, decisions))
 
     print_section_heading('Filename syntax')
     console.print(
@@ -193,17 +196,20 @@ def check(confdir: Path) -> None:
         ' either rename the file and choose [choice]ok[/choice],'
         ' or [choice]ignore[/choice] it in the future.'
     )
-    for ia in actions:
-        path = ia.path
-        paper = parse(path, conf.paths.data)
-        if paper is None:
-            choice = question(
-                '?',
-                ['ok', 'ignore it in the future', 'quit'])
-            if choice == 'ignore it in the future':
-                decisions.add(decisions.IGNORE, path)
-            if choice == 'quit':
-                break
+    parse_results = [parse(ia.path, conf.paths.data) for ia in actions]
+    errors = [error for paper, error in parse_results if error is not None]
+    total = len(errors)
+    console.print(f'[status]Detected {total} files with problems[/status]')
+    for i, error in enumerate(errors):
+        console.print(error.describe())
+        path = error.path
+        choice = question(
+            f'({i + 1}/{total}) ?',
+            ['ok', 'ignore it in the future', 'quit'])
+        if choice == 'ignore it in the future':
+            decisions.add(decisions.IGNORE, path)
+        if choice == 'quit':
+            break
     decisions.write()
 
 
