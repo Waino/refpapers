@@ -21,8 +21,18 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
 
     too_slow = set(x.arg1 for x in decisions.get(decisions.FULLTEXT_TOO_SLOW))
 
+    if not full:
+        # avoid duplicates from mixed full and incremental indexing
+        papers = deduplicate(papers, conf)
+
+    if len(papers) == 0:
+        console.print('[status]Already up to date[/status]')
+        return
+
     start = datetime.now()
     w = ix.writer()
+    added = 0
+    deleted = 0
     for ia in track(papers, description='Indexing...'):
         if ia.paper is None:
             continue
@@ -40,7 +50,7 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
                 logger.info(f'Skipping this file (was too slow previously): {path}')
             else:
                 body = extract_fulltext(paper.path, conf, decisions)
-            print(f'adding {path}')
+            added += 1
             fields = {
                 'path': path,
                 'bibtex': str(paper.bibtex),
@@ -56,17 +66,32 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
                 fields['number'] = paper.number
             w.add_document(**fields)
         elif ia.action == 'D':
-            print(f'deleting {path}')
+            deleted += 1
             w.delete_by_term('path', path)
     w.commit()
     decisions.write()
     delta = datetime.now() - start
     total = delta.total_seconds()
     per_paper = total / len(papers)
+    add_del = '' if full else f' ({added} added/{deleted} deleted)'
     console.print(
-        f'[status]Indexed [status.hi]{len(papers)} papers[/status.hi]'
+        f'[status]Indexed [status.hi]{len(papers)} papers{add_del}[/status.hi]'
         f' in [status.hi]{total} seconds[/status.hi] ({per_paper} per paper)[/status]'
     )
+
+
+def deduplicate(papers: List[IndexingAction], conf) -> List[IndexingAction]:
+    result: List[IndexingAction] = []
+    for ia in papers:
+        if ia.action != 'A':
+            # only deduplicate adds
+            result.append(ia)
+            continue
+        if len(list(search(str(ia.paper.path), conf=conf, decisions=None, limit=1, fields=['path']))) > 0:
+            print(f'Path already indexed: {ia.paper.path}')
+            continue
+        result.append(ia)
+    return result
 
 
 def result_to_paper(result) -> Paper:
@@ -102,7 +127,7 @@ def print_count(results):
 
 
 def search(
-    query: str, conf: Conf, decisions: Decisions, limit=10, fields: List[str] = None
+    query: str, conf: Conf, decisions: Decisions = None, limit=10, fields: List[str] = None
 ) -> Generator[Paper, None, None]:
     if fields is None:
         fields = ["bibtex", "authors", "title", "comment", "body"]
