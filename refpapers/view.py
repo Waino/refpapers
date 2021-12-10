@@ -1,8 +1,11 @@
+import prompt_toolkit
+from collections import Counter
 from itertools import groupby
+from prompt_toolkit.completion import Completer, Completion, FuzzyCompleter, WordCompleter
 from rich.console import Console
 from rich.table import Table
-from rich.theme import Theme
 from rich.text import Text
+from rich.theme import Theme
 from typing import List, Iterable, Union, Optional, Tuple, Dict
 
 from refpapers.schema import Paper, BibtexKey, IndexingAction
@@ -185,3 +188,25 @@ def print_git_indexingaction(ia: IndexingAction, phase: str):
     action_map = {'A': 'added', 'M': 'modified', 'D': 'deleted', '??': 'untracked'}
     expanded = action_map.get(ia.action, ia.action)
     console.print(f'[{phase.lower()}]{phase}[/{phase.lower()}] [action]{expanded}[/action] {ia.paper}')
+
+
+class CategoryCompleter(Completer):
+    def __init__(self, categories: List[str], search_func):
+        self._literal = FuzzyCompleter(WordCompleter(categories))
+        self._search_func = search_func
+
+    def get_completions(self, document, complete_event):
+        completions = list(self._literal.get_completions(document, complete_event))
+        if len(completions) > 0:
+            yield from completions
+        else:
+            papers = self._search_func(document.text)
+            hit_categories = Counter(('/'.join(paper.tags) for paper in papers))
+            for completion, _ in hit_categories.most_common():
+                yield Completion(completion, start_position=-len(document.text))
+
+
+def prompt_category(categories: List[str], search_func):
+    completer = CategoryCompleter(categories, search_func)
+    result = prompt_toolkit.prompt('Category: ', completer=completer)
+    return result

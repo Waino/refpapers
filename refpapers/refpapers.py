@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Iterable
 
 from refpapers.conf import ensure_conf, load_conf, Conf, GitNew, DEFAULT_CONFDIR
-from refpapers.filesystem import yield_actions, parse, apply_all_filters
+from refpapers.filesystem import yield_actions, parse, apply_all_filters, yield_all_subdirs
 from refpapers.git import current_commit, git_difftree, git_status
 from refpapers.logger import ch
 from refpapers.schema import Paper, IndexingAction, SCHEMA_VERSION
@@ -20,6 +20,7 @@ from refpapers.view import (
     print_section_heading,
     question,
     console,
+    prompt_category,
 )
 
 
@@ -211,6 +212,22 @@ def check(confdir: Path) -> None:
         if choice == 'quit':
             break
     decisions.write()
+
+
+@cli.command(help='Propose renaming file automatically')  # type: ignore
+@click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
+              help='Path to directory containing conf.yml and stored state.'
+              f' Default: {DEFAULT_CONFDIR}')
+def rename(confdir: Path) -> None:
+    conf, storedstate, decisions = load_conf(confdir)
+    categories = list(yield_all_subdirs(conf.paths.data))
+    categories = [cat.replace(str(conf.paths.data), '') for cat in categories]
+
+    def _search(query: str):
+        return search(query, conf, decisions, limit=10, silent=True)
+
+    category = prompt_category(categories, _search)
+    print(category)
 
 
 if __name__ == '__main__':

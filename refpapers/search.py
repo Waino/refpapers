@@ -127,7 +127,7 @@ def print_count(results):
 
 
 def search(
-    query: str, conf: Conf, decisions: Decisions = None, limit=10, fields: List[str] = None
+    query: str, conf: Conf, decisions: Decisions = None, limit=10, fields: List[str] = None, silent: bool = False
 ) -> Generator[Paper, None, None]:
     if fields is None:
         fields = ["bibtex", "authors", "title", "comment", "body"]
@@ -139,7 +139,7 @@ def search(
         for result in results:
             paper = result_to_paper(result)
             yield paper
-        if limit > 1:
+        if limit > 1 and not silent:
             print_count(results)
 
 

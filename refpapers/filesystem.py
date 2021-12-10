@@ -1,5 +1,6 @@
-import re
+import glob
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from functools import lru_cache
@@ -89,6 +90,10 @@ def uncamel(title: str) -> str:
 
 def _uncamel(m: Match) -> str:
     return '{} {}'.format(m.group(1), m.group(2).lower())
+
+
+def yield_all_subdirs(root: Path):
+    yield from glob.glob(f'{root}/**/', recursive=True)
 
 
 @dataclass
