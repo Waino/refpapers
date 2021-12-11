@@ -19,24 +19,27 @@ class CategoryCompleter(Completer):
         yield from completions
 
     def _literal_phase(self, query):
-        parts = query.split()
+        parts = query.split('/')
         prefix = parts[:-1]
         suffix = parts[-1]
 
+        # restrict search to descendants of already filled-in part
         cursor = self._category_dict
         for part in prefix:
             if part not in cursor:
                 return
             cursor = cursor[part]
 
+        # if the same key is used in several parts of the tree, yield them all
         by_key = defaultdict(list)
         for key, completion in cursor.all_descendants(prefix):
             by_key[key].append(completion)
 
+        # filter to keep only matching keys
         for key, completions in by_key.items():
             if self._match(key, suffix):
                 for completion in completions:
-                    yield Completion(' '.join(completion), start_position=-len(query))
+                    yield Completion('/'.join(completion), start_position=-len(query))
 
     def _match(self, key, suffix):
         """ is the key a hit for the suffix of the search query """
@@ -57,10 +60,6 @@ class CategoryCompleter(Completer):
                     continue
                 cursor = cursor[component]
         return category_dict
-
-    # print(category_dict)
-    # for tpl in category_dict['nlp']['machineTranslation'].all_descendants(['pref']):
-    #     print(tpl)
 
 
 def prompt_category(categories: List[str], search_func):
