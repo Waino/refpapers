@@ -20,8 +20,8 @@ from refpapers.view import (
     print_section_heading,
     question,
     console,
-    prompt_category,
 )
+from refpapers.prompt_category import prompt_category
 
 
 class AliasedGroup(click.Group):
@@ -221,7 +221,7 @@ def check(confdir: Path) -> None:
 def rename(confdir: Path) -> None:
     conf, storedstate, decisions = load_conf(confdir)
     categories = list(yield_all_subdirs(conf.paths.data))
-    categories = [cat.replace(str(conf.paths.data), '') for cat in categories]
+    categories = [cat.replace(str(conf.paths.data) + '/', '') for cat in categories]
 
     def _search(query: str):
         return search(query, conf, decisions, limit=10, silent=True)
