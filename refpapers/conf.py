@@ -74,6 +74,7 @@ class GitNew(Enum):
 
 class Conf(BaseModel):
     fulltext_chars: Optional[int] = None
+    ids_chars: Optional[int] = 5000
     extract_max_seconds: float = 3.0
     use_git: bool = False
     git_uncommitted: GitNew = GitNew.WARN

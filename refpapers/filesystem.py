@@ -175,9 +175,11 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
             reason=reason_raw, file_path=file_path
         ))
         return None, ParseError(file_path, reason_fmt)
+    doi = None
+    arxiv = None
 
     return (
-        Paper(file_path, bibtex, title, authors, year, pub_type, tags, number),
+        Paper(file_path, bibtex, title, authors, year, pub_type, tags, number, doi, arxiv),
         None
     )
 

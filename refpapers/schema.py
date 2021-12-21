@@ -49,6 +49,8 @@ class Paper:
     pub_type: List[str]
     tags: List[str]
     number: Optional[str]
+    doi: Optional[str]
+    arxiv: Optional[str]
 
     @property
     def suffix(self):
@@ -70,7 +72,7 @@ class IndexingAction:
             return self.paper.path
 
 
-SCHEMA_VERSION = 'v0.1'
+SCHEMA_VERSION = 'v0.2'
 
 # Tokenize bibtex key alphabetic and numeric parts separately
 rt = RegexTokenizer(r'([a-z]+|[0-9]+)')
@@ -86,4 +88,6 @@ whoosh_schema = Schema(
     pub_type=KEYWORD(stored=True),
     tags=KEYWORD(stored=True),
     number=NUMERIC(stored=True, signed=False, sortable=True),
+    doi=ID(stored=True, field_boost=5.0),
+    arxiv=ID(stored=True, field_boost=5.0),
 )

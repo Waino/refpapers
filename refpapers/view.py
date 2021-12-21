@@ -156,6 +156,11 @@ def print_details(paper: Paper) -> None:
         ' / '.join(paper.tags),
     )
     console.print(grid)
+    if paper.doi or paper.arxiv:
+        doi = f'DOI: {paper.doi}' if paper.doi else ''
+        arxiv = paper.arxiv if paper.arxiv else ''
+        joiner = '\t\t' if paper.doi and paper.arxiv else ''
+        console.print(f'{doi}{joiner}{arxiv}')
 
 
 def expand_choice(prefix: str, choices: List[str]) -> Optional[str]:

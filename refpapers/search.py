@@ -1,8 +1,9 @@
 import delegator  # type: ignore
 import os
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import List, Generator
+from typing import List, Generator, Tuple
 from whoosh import index, qparser  # type: ignore
 from rich.progress import track
 
@@ -10,6 +11,17 @@ from refpapers.logger import logger
 from refpapers.conf import Conf, Decisions
 from refpapers.schema import Paper, BibtexKey, whoosh_schema, IndexingAction
 from refpapers.view import console
+
+
+RE_DOI = re.compile(
+    r'(?:https://|info:)?\s*doi(?:\.org)?/?:?\s*'
+    r'(10\.[0-9]{4,}(?:[\./][0-9]+)?)',
+    flags=re.IGNORECASE
+)
+RE_ARXIV = re.compile(
+    r'arXiv:\s*[0-9]{4}.[0-9]{4,5}(?:v[0-9]+)',
+    flags=re.IGNORECASE
+)
 
 
 def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: Decisions):
@@ -50,6 +62,7 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
                 logger.info(f'Skipping this file (was too slow previously): {path}')
             else:
                 body = extract_fulltext(paper.path, conf, decisions)
+                doi, arxiv = extract_ids_from_fulltext(body, paper.path, conf)
             added += 1
             fields = {
                 'path': path,
@@ -64,6 +77,10 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
             }
             if paper.number:
                 fields['number'] = paper.number
+            if doi:
+                fields['doi'] = doi
+            if arxiv:
+                fields['arxiv'] = arxiv
             w.add_document(**fields)
         elif ia.action == 'D':
             deleted += 1
@@ -100,6 +117,8 @@ def result_to_paper(result) -> Paper:
     else:
         pub_type = []
     number = result.get('number', None)
+    doi = result.get('doi', None)
+    arxiv = result.get('arxiv', None)
     return Paper(
         path=Path(result['path']),
         bibtex=BibtexKey.parse(result['bibtex']),
@@ -109,6 +128,8 @@ def result_to_paper(result) -> Paper:
         pub_type=pub_type,
         tags=result['tags'].split(' '),
         number=number,
+        doi=doi,
+        arxiv=arxiv,
     )
 
 
@@ -168,3 +189,16 @@ def extract_fulltext(path: Path, conf: Conf, decisions: Decisions) -> str:
             f' will skip file in the future: {path}')
         decisions.add(decisions.FULLTEXT_TOO_SLOW, path)
     return fulltext
+
+
+def extract_ids_from_fulltext(fulltext: str, path: Path, conf: Conf) -> Tuple[str, str]:
+    fulltext = fulltext[:conf.ids_chars]
+    dois = set(RE_DOI.findall(fulltext))
+    arxivs = set(RE_ARXIV.findall(fulltext))
+    if len(dois) > 1:
+        logger.warning(f'Found too many DOIs in {path}: {dois}')
+    if len(arxivs) > 1:
+        logger.warning(f'Found too many arXiv ids in {path}: {arxivs}')
+    doi = list(dois)[0] if len(dois) == 1 else None
+    arxiv = list(arxivs)[0] if len(arxivs) == 1 else None
+    return doi, arxiv
