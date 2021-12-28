@@ -15,7 +15,7 @@ from refpapers.view import console
 
 RE_DOI = re.compile(
     r'(?:https://|info:)?\s*doi(?:\.org)?/?:?\s*'
-    r'(10\.[0-9]{4,}(?:[\./][0-9]+)?)',
+    r'(10\.[0-9]{4,}(?:[\./][0-9A-Z]+)?(?:[\.-][0-9A-Z]+)*)',
     flags=re.IGNORECASE
 )
 RE_ARXIV = re.compile(
