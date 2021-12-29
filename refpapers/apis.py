@@ -1,10 +1,11 @@
-from crossref.restful import Works
+from crossref.restful import Works  # type: ignore
 
 from refpapers.schema import Paper, BibtexKey
 
+
 class CrossrefApi:
     def __init__(self):
-        works = Works()
+        self.works = Works()
 
     def metadata_from_doi(self, doi, path=None):
         meta = self._fetch(doi)
@@ -35,8 +36,8 @@ class CrossrefApi:
         )
 
     def _fetch(self, doi):
-        # FIXME: decorator to cache the results
-        meta = works.doi(doi)
+        # FIXME: cache the results
+        meta = self.works.doi(doi)
         return meta
 
     @staticmethod
