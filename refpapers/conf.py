@@ -22,6 +22,7 @@ class Paths(BaseModel):
     index: Path
     data: Path
     log: Optional[Path]
+    api_cache: Optional[Path]
 
     @validator('*', pre=True)
     def expanduser(value):
