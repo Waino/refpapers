@@ -8,7 +8,7 @@ from whoosh import index, qparser  # type: ignore
 from rich.progress import track
 
 from refpapers.logger import logger
-from refpapers.conf import Conf, Decisions
+from refpapers.conf import Conf, Decisions, AllCategories
 from refpapers.schema import Paper, BibtexKey, whoosh_schema, IndexingAction
 from refpapers.view import console
 
@@ -26,10 +26,12 @@ RE_ARXIV = re.compile(
 
 def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: Decisions):
     os.makedirs(conf.paths.index, exist_ok=True)
+    all_categories = AllCategories(conf)
     if full:
         ix = index.create_in(conf.paths.index, whoosh_schema)
     else:
         ix = index.open_dir(conf.paths.index)
+        all_categories.read()
 
     too_slow = set(x.arg1 for x in decisions.get(decisions.FULLTEXT_TOO_SLOW))
 
@@ -82,11 +84,13 @@ def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: 
             if arxiv:
                 fields['arxiv'] = arxiv
             w.add_document(**fields)
+            all_categories.add(tuple(paper.tags))
         elif ia.action == 'D':
             deleted += 1
             w.delete_by_term('path', path)
     w.commit()
     decisions.write()
+    all_categories.write()
     delta = datetime.now() - start
     total = delta.total_seconds()
     per_paper = total / len(papers)

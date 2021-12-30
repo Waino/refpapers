@@ -1,11 +1,12 @@
-import yaml
+import json
 import os
 import sys
+import yaml
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from pydantic import BaseModel, validator
-from typing import Dict, Generator, Optional, Set
+from typing import Dict, Generator, Optional, Set, List
 
 from refpapers.logger import add_file_handler
 from refpapers.view import question, get_str, console
@@ -23,6 +24,7 @@ class Paths(BaseModel):
     data: Path
     log: Optional[Path]
     api_cache: Optional[Path]
+    confdir: Optional[Path]
 
     @validator('*', pre=True)
     def expanduser(value):
@@ -92,6 +94,8 @@ class Conf(BaseModel):
             conf = Conf(**d)
             if conf.paths.log:
                 add_file_handler(conf.paths.log)
+            if not conf.paths.confdir:
+                conf.paths.confdir = file_path.parent
         return conf
 
     def all_endings(self):
@@ -180,6 +184,31 @@ class Decisions:
                 else:
                     print(f'{decision.relation}\t{decision.arg1}\t{decision.arg2}', file=fout)
         os.replace(self._tmp_path, self._path)
+
+
+# ##############
+# All categories
+# ##############
+
+class AllCategories:
+    def __init__(self, conf: Conf):
+        if conf.paths.confdir:
+            self.all_categories_path = conf.paths.confdir / 'all_categories.json'
+        else:
+            raise Exception('conf.paths.confdir must be set')
+        self.all_categories: Set[List[str]] = set()
+
+    def add(self, category):
+        self.all_categories.add(category)
+
+    def read(self):
+        if self.all_categories_path.exists():
+            with self.all_categories_path.open('r') as fin:
+                self.all_categories = set(json.load(fin))
+
+    def write(self):
+        with self.all_categories_path.open('w') as fout:
+            json.dump(list(sorted(self.all_categories)), fout)
 
 
 def load_conf(confdir: Path = DEFAULT_CONFDIR):

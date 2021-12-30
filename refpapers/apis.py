@@ -1,3 +1,4 @@
+from abc import ABC
 from crossref.restful import Works  # type: ignore
 from pathlib import Path
 from scholarly import scholarly, ProxyGenerator  # type: ignore
@@ -10,15 +11,25 @@ from refpapers.schema import Paper, BibtexKey
 from refpapers.utils import JsonFileCache
 
 
-class CrossrefApi:
-    def __init__(self, conf: Conf):
-        self._works = Works()
+class CachedApi(ABC):
+    def _init_cache(self, conf: Conf, name: str):
         if conf.paths.api_cache:
             os.makedirs(conf.paths.api_cache, exist_ok=True)
             cache_dir = conf.paths.api_cache
         else:
             cache_dir = Path('/tmp')
-        self._cache = JsonFileCache(cache_dir / 'crossref.jsonl')
+        return JsonFileCache(cache_dir / f'{name}.jsonl')
+
+    def _tags_from_path(self, file_path: Path) -> List[str]:
+        dir_path, file_name = os.path.split(file_path)
+        tags = dir_path.split(os.path.sep)
+        return tags
+
+
+class CrossrefApi(CachedApi):
+    def __init__(self, conf: Conf):
+        self._works = Works()
+        self._cache = self._init_cache(conf, 'crossref')
 
     def metadata_from_doi(self, doi: str, path=None) -> Optional[Paper]:
         meta = self._fetch(doi)
@@ -74,14 +85,9 @@ class CrossrefApi:
         return result
 
 
-class ArxivApi:
+class ArxivApi(CachedApi):
     def __init__(self, conf: Conf):
-        if conf.paths.api_cache:
-            os.makedirs(conf.paths.api_cache, exist_ok=True)
-            cache_dir = conf.paths.api_cache
-        else:
-            cache_dir = Path('/tmp')
-        self._cache = JsonFileCache(cache_dir / 'arxiv.jsonl')
+        self._cache = self._init_cache(conf, 'arxiv')
 
     def metadata_from_id(self, id: str, path=None) -> Optional[Paper]:
         meta = self._fetch(id)
@@ -123,14 +129,9 @@ class ArxivApi:
         return meta
 
 
-class ScholarApi:
+class ScholarApi(CachedApi):
     def __init__(self, conf: Conf):
-        if conf.paths.api_cache:
-            os.makedirs(conf.paths.api_cache, exist_ok=True)
-            cache_dir = conf.paths.api_cache
-        else:
-            cache_dir = Path('/tmp')
-        self._cache = JsonFileCache(cache_dir / 'scholar.jsonl')
+        self._cache = self._init_cache(conf, 'scholar')
         self._proxy_setup()
 
     def metadata_from_title(self, title: str, path=None) -> Optional[Paper]:
