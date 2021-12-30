@@ -6,4 +6,5 @@ crossrefapi==1.5.0
 delegator.py==0.1.1
 pydantic==1.8.2
 rich==10.6.0
+scholarly==1.5.1
 whoosh==2.7.4
