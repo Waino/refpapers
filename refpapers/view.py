@@ -1,5 +1,7 @@
+from enum import Enum
 from itertools import groupby
 from rich.console import Console
+from rich.live import Live
 from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
@@ -190,3 +192,62 @@ def print_git_indexingaction(ia: IndexingAction, phase: str):
     action_map = {'A': 'added', 'M': 'modified', 'D': 'deleted', '??': 'untracked'}
     expanded = action_map.get(ia.action, ia.action)
     console.print(f'[{phase.lower()}]{phase}[/{phase.lower()}] [action]{expanded}[/action] {ia.paper}')
+
+
+class LongTaskStatus(Enum):
+    OK = 1
+    WARN = 2
+    FAIL = 3
+
+
+class LongTask:
+    """ A status tracker for long tasks that don't report intermediary results """
+    OK = LongTaskStatus.OK
+    WARN = LongTaskStatus.WARN
+    FAIL = LongTaskStatus.FAIL
+    _status_map = {
+        LongTaskStatus.OK: Text.assemble(
+            ('[', 'bold white'),
+            ('OK', 'green'),
+            (']', 'bold white'),
+        ),
+        LongTaskStatus.WARN: Text.assemble(
+            ('[', 'bold white'),
+            ('WARN', 'bold yellow'),
+            (']', 'bold white'),
+        ),
+        LongTaskStatus.FAIL: Text.assemble(
+            ('[', 'bold white'),
+            ('FAIL', 'black on red'),
+            (']', 'bold white'),
+        ),
+    }
+
+    def __init__(self, message: Union[str, Text]):
+        self.message = message
+        self.status = ''
+        self._live = None
+
+    def set_status(self, status: Union[str, Text, LongTaskStatus]):
+        if isinstance(status, LongTaskStatus):
+            self.status = self._status_map[status]
+        else:
+            self.status = status
+        if self._live:
+            self._live.update(self._render(), refresh=True)
+
+    def _render(self):
+        grid = Table.grid(expand=True)
+        grid.add_column()
+        grid.add_column(justify="right")
+        grid.add_row(self.message, self.status)
+        return grid
+
+    def __enter__(self):
+        self._live = Live(self._render() , auto_refresh=False).__enter__()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self._live.update(self._render(), refresh=True)
+        self._live.__exit__(*args, **kwargs)
+        self._live = None
