@@ -7,8 +7,8 @@ import os
 from pathlib import Path
 from typing import List, Iterable
 
-from refpapers.conf import ensure_conf, load_conf, Conf, GitNew, DEFAULT_CONFDIR
-from refpapers.filesystem import yield_actions, parse, apply_all_filters, yield_all_subdirs
+from refpapers.conf import ensure_conf, load_conf, Conf, GitNew, DEFAULT_CONFDIR, AllCategories
+from refpapers.filesystem import yield_actions, parse, apply_all_filters
 from refpapers.git import current_commit, git_difftree, git_status
 from refpapers.logger import ch
 from refpapers.schema import Paper, IndexingAction, SCHEMA_VERSION
@@ -21,7 +21,7 @@ from refpapers.view import (
     question,
     console,
 )
-from refpapers.prompt_category import prompt_category
+from refpapers.rename import AutoRenamer
 
 
 class AliasedGroup(click.Group):
@@ -215,19 +215,16 @@ def check(confdir: Path) -> None:
 
 
 @cli.command(help='Propose renaming file automatically')  # type: ignore
+@click.argument('path', type=Path)
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')
-def rename(confdir: Path) -> None:
+def rename(path: Path, confdir: Path) -> None:
     conf, storedstate, decisions = load_conf(confdir)
-    categories = list(yield_all_subdirs(conf.paths.data))
-    categories = [cat.replace(str(conf.paths.data) + '/', '') for cat in categories]
+    categories = AllCategories(conf).read()
 
-    def _search(query: str):
-        return search(query, conf, decisions, limit=10, silent=True)
-
-    category = prompt_category(categories, _search)
-    print(category)
+    auto_renamer = AutoRenamer(conf, storedstate, decisions, categories)
+    auto_renamer.rename(path)
 
 
 if __name__ == '__main__':

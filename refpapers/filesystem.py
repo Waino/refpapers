@@ -21,6 +21,7 @@ RE_THESIS = re.compile(r'_[Tt]hesis')
 RE_CAMEL = re.compile(r'([^A-Z])([A-Z])')
 RE_A_FOO = re.compile(r'(?<![A-Z])(A)([A-Z])')
 RE_MULTISPACE = re.compile(r'  *')
+RE_UNWANTED = re.compile(r'[^\w\+\.-]')
 
 SEPARATOR = '_-_'
 FMT_PARSE_ERROR = 'Unable to parse filename: {reason:18} - {file_path}'
@@ -184,10 +185,11 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
     )
 
 
-def generate(paper: Paper, root=None) -> str:
+def generate(paper: Paper, root=None, tags=None) -> str:
     authors = '_'.join(author.capitalize() if author != 'etAl' else author
                        for author in paper.authors)
     title = ''.join(word.capitalize() for word in paper.title.split())
+    title = title.replace(': ', '_')
     title = title.replace('-', '_')
     if len(paper.pub_type) > 0:
         flags = '_' + '_'.join(paper.pub_type)
@@ -198,7 +200,9 @@ def generate(paper: Paper, root=None) -> str:
     else:
         number = ''
     filename = f'{number}{authors}_-_{title}{flags}_{paper.year}.pdf'
-    path = os.path.join(*paper.tags, filename)
+    filename = RE_UNWANTED.sub('_', filename)
+    tags = tags if tags else paper.tags
+    path = os.path.join(*tags, filename)
     if root:
         path = os.path.join(root, path)
     return path

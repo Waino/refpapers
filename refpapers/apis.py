@@ -1,14 +1,30 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from crossref.restful import Works  # type: ignore
 from pathlib import Path
 from scholarly import scholarly, ProxyGenerator  # type: ignore
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import arxiv  # type: ignore
 import os
 
 from refpapers.conf import Conf
 from refpapers.schema import Paper, BibtexKey
 from refpapers.utils import JsonFileCache
+
+
+def paper_from_metadata(meta):
+    bibtex = BibtexKey(meta['authors'][0], meta['year'], BibtexKey.title_word(meta['title']))
+    return Paper(
+        path=None,
+        bibtex=bibtex,
+        title=meta['title'],
+        authors=meta['authors'],
+        year=meta['year'],
+        pub_type=[],
+        tags=[],
+        number=None,
+        doi=None,
+        arxiv=None,
+    )
 
 
 class CachedApi(ABC):
@@ -25,48 +41,44 @@ class CachedApi(ABC):
         tags = dir_path.split(os.path.sep)
         return tags
 
+    @abstractmethod
+    def _fetch(self, id: str) -> Optional[Dict[str, Any]]:
+        pass
+
 
 class CrossrefApi(CachedApi):
     def __init__(self, conf: Conf):
         self._works = Works()
         self._cache = self._init_cache(conf, 'crossref')
 
-    def metadata_from_doi(self, doi: str, path=None) -> Optional[Paper]:
-        meta = self._fetch(doi)
+    def paper_from_doi(self, doi: str, path=None) -> Optional[Paper]:
+        meta = self._cache.get(doi, self._fetch)
         if not meta:
             return None
-        title = ''.join(meta.get('title', []))
-        subtitle = ''.join(meta.get('subtitle', []))
+        return paper_from_metadata(meta)
+
+    def _fetch(self, doi: str) -> Optional[Dict[str, Any]]:
+        """ Returns metadata or None if DOI not found """
+        result = self._works.doi(doi)
+        title = ''.join(result.get('title', []))
+        subtitle = ''.join(result.get('subtitle', []))
         if subtitle:
             title = f'{title} - {subtitle}'
-        year = self._get_year(meta)
-        authors = self._get_authors_family(meta)
+        year = self._get_year(result)
+        authors = self._get_authors_family(result)
 
         if len(authors) == 0:
             return None
         if not year:
             return None
 
-        bibtex = BibtexKey(authors[0], year, BibtexKey.title_word(title))
-
-        # FIXME: only extracts data needed for Paper. Bibtex output needs more.
-        return Paper(
-            path=path,
-            bibtex=bibtex,
-            title=title,
-            authors=authors,
-            year=year,
-            pub_type=[],
-            tags=[],
-            number=None,
-            doi=doi,
-            arxiv=None
-        )
-
-    def _fetch(self, doi: str):
-        """ Returns metadata or None if DOI not found """
-        meta = self._cache.get(doi, lambda: self._works.doi(doi))
-        return meta
+        # TODO: only extracts data needed for Paper. Bibtex output needs more.
+        return {
+            'title': title,
+            'year': year,
+            'authors': authors,
+            'doi': doi,
+        }
 
     @staticmethod
     def _get_year(meta) -> Optional[int]:
@@ -89,44 +101,35 @@ class ArxivApi(CachedApi):
     def __init__(self, conf: Conf):
         self._cache = self._init_cache(conf, 'arxiv')
 
-    def metadata_from_id(self, id: str, path=None) -> Optional[Paper]:
-        meta = self._fetch(id)
+    def paper_from_id(self, id: str, path=None) -> Optional[Paper]:
+        if id.startswith('arXiv:'):
+            id = id.replace('arXiv:', '', 1)
+        meta = self._cache.get(id, self._fetch)
+        if not meta:
+            return None
+        return paper_from_metadata(meta)
 
-        title = meta.title
-        year = meta.published.year
-        authors = [author.name.split()[-1] for author in meta.authors]
-        try:
-            doi = meta.doi
-        except AttributeError:
-            doi = None
-
-        bibtex = BibtexKey(authors[0], year, BibtexKey.title_word(title))
-
-        return Paper(
-            path=path,
-            bibtex=bibtex,
-            title=title,
-            authors=authors,
-            year=year,
-            pub_type=[],
-            tags=[],
-            number=None,
-            doi=doi,
-            arxiv=id,
-        )
-
-    def _fetch(self, id: str):
+    def _fetch(self, id: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if id not found """
-
-        def _uncached_fetch():
+        try:
+            results = arxiv.Search(id_list=[id]).results()
+            result = next(results)
+            title = result.title
+            year = result.published.year
+            authors = [author.name.split()[-1] for author in result.authors]
             try:
-                results = arxiv.Search(id_list=[id]).results()
-                return next(results)
-            except Exception:
-                return None
-
-        meta = self._cache.get(id, _uncached_fetch)
-        return meta
+                doi = result.doi
+            except AttributeError:
+                doi = None
+            return {
+                'title': title,
+                'year': year,
+                'authors': authors,
+                'doi': doi,
+                'arxiv': id,
+            }
+        except Exception:
+            return None
 
 
 class ScholarApi(CachedApi):
@@ -134,51 +137,34 @@ class ScholarApi(CachedApi):
         self._cache = self._init_cache(conf, 'scholar')
         self._proxy_setup()
 
-    def metadata_from_title(self, title: str, path=None) -> Optional[Paper]:
-        meta = self._fetch(title)
-
-        try:
-            title = meta['bib']['title']
-            year = int(meta['bib']['pub_year'])
-            authors = [author.split()[-1] for author in meta['bib']['author']]
-            # url = meta.get('eprint_url', None)
-        except AttributeError:
+    def paper_from_title(self, title: str, path=None) -> Optional[Paper]:
+        meta = self._cache.get(title, self._fetch)
+        if not meta:
             return None
-        except ValueError:
-            return None
-
-        if not all((title, year, authors)):
-            return None
-
-        bibtex = BibtexKey(authors[0], year, BibtexKey.title_word(title))
-
-        return Paper(
-            path=path,
-            bibtex=bibtex,
-            title=title,
-            authors=authors,
-            year=year,
-            pub_type=[],
-            tags=[],
-            number=None,
-            doi=None,
-            arxiv=None,
-        )
+        return paper_from_metadata(meta)
 
     def _proxy_setup(self):
         pg = ProxyGenerator()
         pg.FreeProxies()
         scholarly.use_proxy(pg)
 
-    def _fetch(self, title: str):
+    def _fetch(self, title: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if id not found """
+        try:
+            results = scholarly.search_pubs(title)
+            result = next(results)
+            title = result['bib']['title']
+            year = int(result['bib']['pub_year'])
+            authors = [author.split()[-1] for author in result['bib']['author']]
+            url = result.get('eprint_url', None)
 
-        def _uncached_fetch():
-            try:
-                results = scholarly.search_pubs(title)
-                return next(results)
-            except Exception:
+            if not all((title, year, authors)):
                 return None
-
-        meta = self._cache.get(title, _uncached_fetch)
-        return meta
+            return {
+                'title': title,
+                'year': year,
+                'authors': authors,
+                'url': url,
+            }
+        except Exception:
+            return None

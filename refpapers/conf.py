@@ -82,6 +82,7 @@ class Conf(BaseModel):
     use_git: bool = False
     git_uncommitted: GitNew = GitNew.WARN
     git_untracked: GitNew = GitNew.WARN
+    use_scholar: bool = False
     paths: Paths
     software: Software = Software(viewers=dict(), extractors=dict())
 
@@ -204,11 +205,15 @@ class AllCategories:
     def read(self):
         if self.all_categories_path.exists():
             with self.all_categories_path.open('r') as fin:
-                self.all_categories = set(json.load(fin))
+                self.all_categories = set(tuple(x) for x in json.load(fin))
+        return self
 
     def write(self):
         with self.all_categories_path.open('w') as fout:
             json.dump(list(sorted(self.all_categories)), fout)
+
+    def __iter__(self):
+        yield from sorted(self.all_categories)
 
 
 def load_conf(confdir: Path = DEFAULT_CONFDIR):

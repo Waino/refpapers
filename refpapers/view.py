@@ -1,5 +1,6 @@
 from enum import Enum
 from itertools import groupby
+from pathlib import Path
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -225,7 +226,7 @@ class LongTask:
 
     def __init__(self, message: Union[str, Text]):
         self.message = message
-        self.status = ''
+        self.status: Union[str, Text] = ''
         self._live = None
 
     def set_status(self, status: Union[str, Text, LongTaskStatus]):
@@ -244,10 +245,22 @@ class LongTask:
         return grid
 
     def __enter__(self):
-        self._live = Live(self._render() , auto_refresh=False).__enter__()
+        self._live = Live(self._render(), auto_refresh=False).__enter__()
         return self
 
     def __exit__(self, *args, **kwargs):
-        self._live.update(self._render(), refresh=True)
+        if not self.status:
+            # If you didn't set a status before exit, then it failed
+            self.set_status(LongTaskStatus.FAIL)
+        else:
+            # ensure that the correct status is shown
+            self._live.update(self._render(), refresh=True)
         self._live.__exit__(*args, **kwargs)
         self._live = None
+
+
+def print_fulltext(fulltext: List[str], path: Path) -> None:
+    console.rule(f'[rule.line]─ [heading]Head of {path}[/heading]', align='left')
+    for line in fulltext:
+        print(line)
+    console.rule()

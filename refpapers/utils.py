@@ -53,6 +53,6 @@ class JsonFileCache:
     def get(self, key, func):
         if key in self._data:
             return self._data[key]
-        val = func()
+        val = func(key)
         self._write(key, val)
         return val
