@@ -73,3 +73,19 @@ def git_status(gitdir: Path) -> Tuple[List[IndexingAction], List[IndexingAction]
         except Exception:
             logger.warning(f'Did not understand git status: "{line}"')
     return staged, untracked
+
+
+def git_annex_add(gitdir: Path, paper_path: Path):
+    command = f'git -C {gitdir} annex add {paper_path}'
+    print(command)
+    # result = delegator.run(command)
+    # if not result.return_code == 0:
+    #     raise Exception(f'failed {result} {result.err}')
+
+
+def git_annex_sync(gitdir: Path):
+    command = f'git -C {gitdir} annex sync --content'
+    print(command)
+    # result = delegator.run(command)
+    # if not result.return_code == 0:
+    #     raise Exception(f'failed {result} {result.err}')

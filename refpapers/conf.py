@@ -5,11 +5,11 @@ import yaml
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, root_validator
 from typing import Dict, Generator, Optional, Set, List
 
 from refpapers.logger import add_file_handler
-from refpapers.view import question, get_str, console
+from refpapers.view import question, prompt, console
 
 HOMEDIR = os.environ.get('HOME', '.')
 DEFAULT_CONFDIR = Path(HOMEDIR) / '.refpapers'
@@ -80,6 +80,7 @@ class Conf(BaseModel):
     ids_chars: Optional[int] = 5000
     extract_max_seconds: float = 3.0
     use_git: bool = False
+    use_git_annex: bool = False
     git_uncommitted: GitNew = GitNew.WARN
     git_untracked: GitNew = GitNew.WARN
     use_scholar: bool = False
@@ -106,6 +107,13 @@ class Conf(BaseModel):
         if len(endings) == 0:
             endings = ('pdf', 'djvu')
         return endings
+
+    # validators
+    @root_validator
+    def check_git(cls, values):
+        if values.get('use_git_annex') and not values.get('use_git'):
+            raise ValueError('use_git_annex requires use_git')
+        return values
 
 
 # #####################################
@@ -247,8 +255,8 @@ paths:
 
 def write_minimal_conf(confdir: Path = DEFAULT_CONFDIR):
     path = confdir / 'conf.yml'
-    data = Path(get_str('Path to the directory where you keep your papers (PDFs)'))
-    index = Path(get_str('Path where you want the search database to be stored'))
+    data = Path(prompt('Path to the directory where you keep your papers (PDFs): '))
+    index = Path(prompt('Path where you want the search database to be stored: '))
     if (data / '.git').exists():
         console.print(
             f'[warning]N.B:[/warning] {data}/.git found: consider turning on the [italic]use_git[/italic] feature'

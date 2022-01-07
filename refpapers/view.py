@@ -1,6 +1,11 @@
+import prompt_toolkit
+import sys
 from enum import Enum
 from itertools import groupby
 from pathlib import Path
+from prompt_toolkit import HTML
+from prompt_toolkit.completion import Completer, WordCompleter
+from prompt_toolkit.styles import Style
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -14,7 +19,20 @@ Renderable = Union[str, Text]
 
 MAX_LEN_AUTHORS = 50
 
-THEME = Theme({
+
+def to_prompt_toolkit(val):
+    bold = 'bold ' in val
+    dim = not bold and 'dim ' in val
+    val = val.replace('bold ', '').replace('dim ', '').strip()
+
+    out_bold = 'bold ' if bold else ''
+    out_bright = 'bright' if not dim else ''
+    if val == 'white':
+        out_bright = ''
+    return f'{out_bold}ansi{out_bright}{val}'
+
+
+THEME = {
     'authors': 'bold black',
     'authors.first': 'white',
     'bib': 'dim cyan',
@@ -34,9 +52,12 @@ THEME = Theme({
     'action': 'bold white',
     'warning': 'bold red',
     'rule.line': 'dim cyan',
+}
+console = Console(theme=Theme(THEME))
+prompt_toolkit_style = Style.from_dict({
+    key: to_prompt_toolkit(val)
+    for key, val in THEME.items()
 })
-console = Console(theme=THEME)
-
 
 PUB_TYPE_FLAGS = {
     'book': 'B',
@@ -44,6 +65,13 @@ PUB_TYPE_FLAGS = {
     'survey': '[survey]S[/survey]',
     'thesis': '[thesis]T[/thesis]',
 }
+
+
+def to_html(rich_str: str) -> HTML:
+    for tag, _ in THEME.items():
+        rich_str = rich_str.replace(f'[{tag}]', f'<{tag}>')
+        rich_str = rich_str.replace(f'[/{tag}]', f'</{tag}>')
+    return HTML(rich_str)
 
 
 def blending_columns(left: Renderable, right: Renderable) -> Table:
@@ -173,20 +201,34 @@ def expand_choice(prefix: str, choices: List[str]) -> Optional[str]:
     return None
 
 
-def question(prompt: str, choices: List[str]) -> Optional[str]:
+def question(prompt_str: str, choices: List[str]) -> Optional[str]:
     assert len(set(choice[0] for choice in choices)) == len(choices), \
         'Choices must have unique first chars'
-    text = [f'[prompt]{prompt}:[/prompt]']
+    text = [f'[prompt]{prompt_str}:[/prompt]']
     for choice in choices:
         text.append(f' [choice]({choice[0]})[/choice]{choice[1:]}')
     text.append(' ? ')
-    prefix = console.input(''.join(text))
+    completer = WordCompleter(choices)
+    prefix = prompt(''.join(text), completer=completer)
     expanded = expand_choice(prefix, choices)
     return expanded
 
 
-def get_str(prompt: str) -> str:
-    return console.input(f'[prompt]{prompt}:[/prompt] ')
+def prompt(
+    prompt_str: str, completer: Optional[Completer] = None, default: Optional[str] = None
+) -> str:
+    if sys.stdin.isatty():
+        prompt_str = f'[prompt]{prompt_str}[/prompt]'
+        default = default if default else ''
+        return prompt_toolkit.prompt(
+            to_html(prompt_str),
+            completer=completer,
+            default=default,
+            style=prompt_toolkit_style,
+        )
+    else:
+        # input is a non-interactive (e.g. pipe)
+        return console.input(prompt_str)
 
 
 def print_git_indexingaction(ia: IndexingAction, phase: str):

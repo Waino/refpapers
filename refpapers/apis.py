@@ -11,11 +11,11 @@ from refpapers.schema import Paper, BibtexKey
 from refpapers.utils import JsonFileCache
 
 
-def paper_from_metadata(meta):
-    bibtex = BibtexKey(meta['authors'][0], meta['year'], BibtexKey.title_word(meta['title']))
+def paper_from_metadata(meta: Dict[str, Any], path: Path) -> Paper:
+    bibtex = BibtexKey(meta['authors'][0].lower(), meta['year'], BibtexKey.title_word(meta['title']))
     # TODO: replace too many authors with etAl (requires conf)
     return Paper(
-        path=None,
+        path=path,
         bibtex=bibtex,
         title=meta['title'],
         authors=meta['authors'],
@@ -56,7 +56,7 @@ class CrossrefApi(CachedApi):
         meta = self._cache.get(doi, self._fetch)
         if not meta:
             return None
-        return paper_from_metadata(meta)
+        return paper_from_metadata(meta, path)
 
     def _fetch(self, doi: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if DOI not found """
@@ -108,7 +108,7 @@ class ArxivApi(CachedApi):
         meta = self._cache.get(id, self._fetch)
         if not meta:
             return None
-        return paper_from_metadata(meta)
+        return paper_from_metadata(meta, path)
 
     def _fetch(self, id: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if id not found """
@@ -142,7 +142,7 @@ class ScholarApi(CachedApi):
         meta = self._cache.get(title, self._fetch)
         if not meta:
             return None
-        return paper_from_metadata(meta)
+        return paper_from_metadata(meta, path)
 
     def _proxy_setup(self):
         pg = ProxyGenerator()

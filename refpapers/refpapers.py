@@ -227,5 +227,19 @@ def rename(path: Path, confdir: Path) -> None:
     auto_renamer.rename(path)
 
 
+@cli.command(help='Ingest files in inbox: auto-rename, commit, sync, index')  # type: ignore
+@click.option('--path', type=Path, default=Path('.'),
+              help='Path to inbox (default: current working directory)')
+@click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
+              help='Path to directory containing conf.yml and stored state.'
+              f' Default: {DEFAULT_CONFDIR}')
+def inbox(path: Path, confdir: Path) -> None:
+    conf, storedstate, decisions = load_conf(confdir)
+    categories = AllCategories(conf).read()
+
+    auto_renamer = AutoRenamer(conf, storedstate, decisions, categories)
+    auto_renamer.ingest_inbox(path)
+
+
 if __name__ == '__main__':
     cli()

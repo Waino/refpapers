@@ -47,7 +47,7 @@ def ending_globs(conf: Conf) -> List[str]:
 
 def yield_all_paths(root, conf: Conf) -> Generator[IndexingAction, None, None]:
     for ending_glob in ending_globs(conf):
-        for path in Path(root).rglob(ending_glob):
+        for path in sorted(Path(root).rglob(ending_glob)):
             yield IndexingAction('A', path)
 
 
@@ -185,7 +185,8 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
     )
 
 
-def generate(paper: Paper, root=None, tags=None) -> str:
+def generate(paper: Paper, root=None, tags=None, suffix: str = 'pdf') -> str:
+    # TODO: umlaut stripping, beautifying hyphen-compounds
     authors = '_'.join(author.capitalize() if author != 'etAl' else author
                        for author in paper.authors)
     title = ''.join(word.capitalize() for word in paper.title.split())
@@ -199,8 +200,9 @@ def generate(paper: Paper, root=None, tags=None) -> str:
         number = f'{paper.number}_'
     else:
         number = ''
-    filename = f'{number}{authors}_-_{title}{flags}_{paper.year}.pdf'
+    filename = f'{number}{authors}_-_{title}{flags}_{paper.year}.{suffix}'
     filename = RE_UNWANTED.sub('_', filename)
+    filename = filename.lstrip('.')
     tags = tags if tags else paper.tags
     path = os.path.join(*tags, filename)
     if root:

@@ -1,20 +1,21 @@
-import prompt_toolkit
 import re
+import os
 from collections import Counter, defaultdict
 from copy import copy
 from pathlib import Path
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 from shutil import move
 
 from refpapers.apis import CrossrefApi, ArxivApi, ScholarApi, paper_from_metadata
 from refpapers.conf import AllCategories
-from refpapers.filesystem import generate
+from refpapers.filesystem import generate, yield_all_paths
+from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
 from refpapers.schema import Paper
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext
 from refpapers.utils import DeepDefaultDict
-from refpapers.view import LongTask, print_fulltext, print_details, question
+from refpapers.view import LongTask, print_fulltext, print_details, question, prompt
 
 
 class CategoryCompleter(Completer):
@@ -73,31 +74,38 @@ class CategoryCompleter(Completer):
         return category_dict
 
 
-def prompt_category(categories: AllCategories, search_func):
+def prompt_category(categories: AllCategories, search_func) -> str:
     completer = CategoryCompleter(categories, search_func)
-    result = prompt_toolkit.prompt('Category: ', completer=completer)
+    result = prompt('Category: ', completer=completer)
     return result
+
+
+def prompt_edit_path(path: Path) -> Path:
+    result = prompt('Path: ', default=str(path))
+    return Path(result)
 
 
 RE_NONWORD = re.compile(r'\W')
 RE_MULTISPACE = re.compile(r'\s\s*')
 
 
-def prompt_metadata(fields: List[Tuple[str, Optional[str]]], fulltext: str):
+def prompt_metadata(fields: List[Tuple[str, Optional[str], Optional[Callable]]], fulltext: str):
     fulltext = RE_NONWORD.sub(' ', fulltext)
     fulltext = RE_MULTISPACE.sub(' ', fulltext)
     words = set(fulltext.split())
     for word in set(words):
         words.add(word.lower())
     results = dict()
-    for field, pattern in fields:
+    for field, pattern, postfunc in fields:
         if pattern:
             pat = re.compile(pattern)
             filtered_words = [word for word in sorted(words) if pat.match(word)]
         else:
             filtered_words = sorted(words)
         completer = WordCompleter(filtered_words)
-        result = prompt_toolkit.prompt(f'{field.capitalize()}: ', completer=completer)
+        result = prompt(f'{field.capitalize()}: ', completer=completer)
+        if postfunc:
+            result = postfunc(result)
         results[field] = result
     return results
 
@@ -140,17 +148,19 @@ class AutoRenamer:
             fulltext_top_joined = '\n'.join(fulltext_top)
             # prompt for missing metadata and fill in the rest based on scholar, if turned on
             if self.conf.use_scholar:
-                meta = prompt_metadata([('title', None)], fulltext_top_joined)
+                meta = prompt_metadata([('title', None, None)], fulltext_top_joined)
                 with LongTask('Scholar query...') as ltask:
                     paper = self._scholar.paper_from_title(meta['title'])
                     if paper:
                         ltask.set_status(ltask.OK)
             else:
                 meta = prompt_metadata(
-                    [('title', None), ('year', r'^[12]\d{3}$'), ('authors', r'^[^0-9a-z].*')],
+                    [('title', None, lambda x: x.strip()),
+                     ('year', r'^[12]\d{3}$', None),
+                     ('authors', r'^[^0-9a-z].*', lambda x: x.split())],
                     fulltext_top_joined
                 )
-                paper = paper_from_metadata(meta)
+                paper = paper_from_metadata(meta, path)
 
         # TODO: prompt for pubtype
 
@@ -159,38 +169,59 @@ class AutoRenamer:
             return search(query, self.conf, self.decisions, limit=10, silent=True)
 
         category = prompt_category(self.categories, _search)
-        paper = self._generate_path(paper, category)
+        paper = self._generate_path(paper, category, suffix=path.suffix)
 
         if paper:
+            new_path = paper.path
             # display results
             print_details(paper)
             if paper.path.exists():
-                logger.warning(f'File already exists, will not overwrite: {paper.path}')
+                logger.warning(f'File already exists, will not overwrite: {new_path}')
                 return None
             # prompt for confirmation
-            choice = question('Apply the rename', ['yes', 'no'])
+            choice = question('Apply the rename', ['yes', 'no', 'edit'])
+            if choice == 'edit':
+                new_path = prompt_edit_path(new_path)
+                choice = 'yes'
             # apply rename
             if choice == 'yes':
-                print(f'mv -i "{path}" "{paper.path}"')
+                dir_path = new_path.parent
+                if not dir_path.exists():
+                    with LongTask('creating subdirectory ...') as ltask:
+                        os.makedirs(dir_path, exist_ok=True)
+                        if dir_path.exists():
+                            ltask.set_status(ltask.OK)
+                print(f'mv -i "{path}" "{new_path}"')
                 with LongTask('moving...') as ltask:
-                    move(path, paper.path)
-                    if paper.path.exists():
+                    move(path, new_path)
+                    if new_path.exists():
                         ltask.set_status(ltask.OK)
+                        return new_path
+                    else:
+                        return None
             else:
                 return None
         else:
             logger.warning('Failed to gather metadata for renaming')
             return None
 
-    def rename_all(self, path):
-        # glob based on suffixes
-        # call auto_rename
-        # add to git annex
-        # sync git annex
-        # index
-        pass
+    def ingest_inbox(self, path):
+        # glob based on the suffixes that refpapers recognizes
+        for ia in yield_all_paths(path, self.conf):
+            new_path = self.rename(ia.path)
+            if not new_path:
+                continue
+            if self.conf.use_git_annex:
+                with LongTask('add to git annex...') as ltask:
+                    git_annex_add(self.conf.paths.data, new_path)
+                    ltask.set_status(ltask.OK)
+        if self.conf.use_git_annex:
+            with LongTask('sync git annex...') as ltask:
+                git_annex_sync(self.conf.paths.data)
+                ltask.set_status(ltask.OK)
+        # FIXME: index
 
-    def _generate_path(self, paper: Paper, category: str):
+    def _generate_path(self, paper: Paper, category: str, suffix: str):
         tags = category.split('/')
         path = Path(generate(paper, root=self.conf.paths.data, tags=tags))
         # This violates the usual immutability of Paper, but we are modifying a copy

@@ -19,7 +19,7 @@ RE_DOI = re.compile(
     flags=re.IGNORECASE
 )
 RE_ARXIV = re.compile(
-    r'arXiv:\s*[0-9]{4}.[0-9]{4,5}(?:v[0-9]+)',
+    r'arXiv:\s*[0-9]{4}\.[0-9]{4,5}(?:v[0-9]+)?',
     flags=re.IGNORECASE
 )
 
