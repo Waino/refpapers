@@ -13,6 +13,7 @@ from refpapers.utils import JsonFileCache
 
 def paper_from_metadata(meta):
     bibtex = BibtexKey(meta['authors'][0], meta['year'], BibtexKey.title_word(meta['title']))
+    # TODO: replace too many authors with etAl (requires conf)
     return Paper(
         path=None,
         bibtex=bibtex,

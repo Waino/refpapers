@@ -5,10 +5,12 @@ from copy import copy
 from pathlib import Path
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from typing import List, Optional, Tuple
+from shutil import move
 
 from refpapers.apis import CrossrefApi, ArxivApi, ScholarApi, paper_from_metadata
 from refpapers.conf import AllCategories
 from refpapers.filesystem import generate
+from refpapers.logger import logger
 from refpapers.schema import Paper
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext
 from refpapers.utils import DeepDefaultDict
@@ -162,13 +164,23 @@ class AutoRenamer:
         if paper:
             # display results
             print_details(paper)
+            if paper.path.exists():
+                logger.warning(f'File already exists, will not overwrite: {paper.path}')
+                return None
             # prompt for confirmation
             choice = question('Apply the rename', ['yes', 'no'])
             # apply rename
             if choice == 'yes':
                 print(f'mv -i "{path}" "{paper.path}"')
+                with LongTask('moving...') as ltask:
+                    move(path, paper.path)
+                    if paper.path.exists():
+                        ltask.set_status(ltask.OK)
+            else:
+                return None
         else:
-            print('Renaming failed')
+            logger.warning('Failed to gather metadata for renaming')
+            return None
 
     def rename_all(self, path):
         # glob based on suffixes
@@ -179,7 +191,6 @@ class AutoRenamer:
         pass
 
     def _generate_path(self, paper: Paper, category: str):
-        # FIXME: replace too many authors with etAl (too late to do here)
         tags = category.split('/')
         path = Path(generate(paper, root=self.conf.paths.data, tags=tags))
         # This violates the usual immutability of Paper, but we are modifying a copy
