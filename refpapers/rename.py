@@ -13,7 +13,7 @@ from refpapers.filesystem import generate, yield_all_paths
 from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
 from refpapers.schema import Paper
-from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext
+from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext, index_data
 from refpapers.utils import DeepDefaultDict
 from refpapers.view import LongTask, print_fulltext, print_details, question, prompt
 
@@ -219,7 +219,7 @@ class AutoRenamer:
             with LongTask('sync git annex...') as ltask:
                 git_annex_sync(self.conf.paths.data)
                 ltask.set_status(ltask.OK)
-        # FIXME: index
+        index_data(full=False, conf=self.conf, storedstate=self.storedstate, decisions=self.decisions)
 
     def _generate_path(self, paper: Paper, category: str, suffix: str):
         tags = category.split('/')

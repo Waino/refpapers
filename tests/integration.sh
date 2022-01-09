@@ -166,6 +166,11 @@ software:
         txt: "cat"
 GITCONF
 
+pushd ${DATA_DIR}
+echo "git -C "${DATA_DIR}" annex init"
+git -C "${DATA_DIR}" annex init
+popd
+
 # Preparing API cache: comment these out to also test retrieval
 echo "# Preparing API cache..."
 mkdir -p "${CONF_DIR}/api_cache"

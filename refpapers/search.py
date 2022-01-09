@@ -3,14 +3,16 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List, Generator, Tuple
+from typing import List, Generator, Tuple, Optional
 from whoosh import index, qparser  # type: ignore
 from rich.progress import track
 
+from refpapers.conf import Conf, StoredState, Decisions, AllCategories, GitNew
+from refpapers.filesystem import yield_actions, parse, apply_all_filters
+from refpapers.git import current_commit, git_difftree, git_status
 from refpapers.logger import logger
-from refpapers.conf import Conf, Decisions, AllCategories
-from refpapers.schema import Paper, BibtexKey, whoosh_schema, IndexingAction
-from refpapers.view import console
+from refpapers.schema import Paper, BibtexKey, whoosh_schema, IndexingAction, SCHEMA_VERSION
+from refpapers.view import print_git_indexingaction, console
 
 
 RE_DOI = re.compile(
@@ -24,7 +26,87 @@ RE_ARXIV = re.compile(
 )
 
 
-def index_data(papers: List[IndexingAction], full: bool, conf: Conf, decisions: Decisions):
+def index_data(full: bool, conf: Conf, storedstate: StoredState, decisions: Decisions):
+    commit = None
+    if not full:
+        existing_schema_version = storedstate.read('schema_version')
+        if existing_schema_version is None:
+            console.print('[status]First indexing, performing full indexing[/status]')
+            full = True
+        elif existing_schema_version != SCHEMA_VERSION:
+            console.print('[status]Existing index uses different schema version, performing full indexing[/status]')
+            full = True
+    if not full and not conf.use_git:
+        console.print('[status]Not configured to use git, performing full indexing[/status]')
+        full = True
+    if not full:
+        commit = storedstate.read('last_indexed_commit')
+        if not commit:
+            console.print('[status]No recorded git commit, performing full indexing[/status]')
+            full = True
+
+    papers: List[IndexingAction] = _find_papers_to_index(full=full, conf=conf, decisions=decisions, commit=commit)
+
+    if len(papers) == 0:
+        console.print('[status]Up to date, nothing to index[/status]')
+    else:
+        _index_papers(papers, full=full, conf=conf, decisions=decisions)
+        storedstate.write('schema_version', SCHEMA_VERSION)
+
+    if conf.use_git:
+        commit = current_commit(conf.paths.data)
+        storedstate.write('last_indexed_commit', commit)
+
+
+def _find_papers_to_index(
+    full: bool,
+    conf: Conf,
+    decisions: Decisions,
+    commit: Optional[str]
+) -> List[IndexingAction]:
+    if full:
+        actions = list(yield_actions(conf.paths.data, conf, decisions))
+    else:
+        assert commit is not None
+        console.print(f'[status]Performing incremental indexing from commit {commit}')
+        actions = git_difftree(conf.paths.data, commit)
+        if not (conf.git_uncommitted == GitNew.IGNORE and conf.git_untracked == GitNew.IGNORE):
+            staged: List[IndexingAction]
+            untracked: List[IndexingAction]
+            staged, untracked = git_status(conf.paths.data)
+            staged = list(apply_all_filters(staged, conf, decisions))
+            untracked = list(apply_all_filters(untracked, conf, decisions))
+
+            if conf.git_uncommitted == GitNew.WARN:
+                for ia in staged:
+                    print_git_indexingaction(ia, 'STAGED')
+            elif conf.git_uncommitted == GitNew.ADD:
+                # add staged actions to index
+                actions.extend(staged)
+
+            if conf.git_untracked == GitNew.WARN:
+                for ia in untracked:
+                    print_git_indexingaction(ia, 'UNTRACKED')
+                pass
+            elif conf.git_untracked == GitNew.ADD:
+                # add untracked actions to index
+                for ia in untracked:
+                    # convert '??' to 'A'
+                    actions.append(IndexingAction('A', ia.paper))
+
+        actions = list(apply_all_filters(actions, conf, decisions))
+
+    papers = []
+    for ia in actions:
+        paper, error = parse(ia.path, conf.paths.data)
+        if not paper:
+            continue
+        papers.append(IndexingAction(ia.action, paper))
+
+    return papers
+
+
+def _index_papers(papers: List[IndexingAction], full: bool, conf: Conf, decisions: Decisions):
     os.makedirs(conf.paths.index, exist_ok=True)
     all_categories = AllCategories(conf)
     if full:
