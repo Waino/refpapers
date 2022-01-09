@@ -2,13 +2,15 @@ import glob
 import os
 import re
 from dataclasses import dataclass
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Match, Generator, Iterable, Optional, Tuple
+from unidecode import unidecode
 
 from refpapers.logger import logger
 from refpapers.conf import Decisions, Conf
 from refpapers.schema import Paper, BibtexKey, IndexingAction
+from refpapers.utils import beautify_hyphen_compounds
 
 
 RE_NAME = re.compile(r'^[A-Za-z].*$')
@@ -186,10 +188,11 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
 
 
 def generate(paper: Paper, root=None, tags=None, suffix: str = 'pdf') -> str:
-    # TODO: umlaut stripping, beautifying hyphen-compounds
     authors = '_'.join(author.capitalize() if author != 'etAl' else author
                        for author in paper.authors)
-    title = ''.join(word.capitalize() for word in paper.title.split())
+    title = paper.title
+    title = beautify_hyphen_compounds(title)
+    title = ''.join(word.capitalize() for word in title.split())
     title = title.replace(': ', '_')
     title = title.replace('-', '_')
     if len(paper.pub_type) > 0:
@@ -203,6 +206,7 @@ def generate(paper: Paper, root=None, tags=None, suffix: str = 'pdf') -> str:
     filename = f'{number}{authors}_-_{title}{flags}_{paper.year}.{suffix}'
     filename = RE_UNWANTED.sub('_', filename)
     filename = filename.lstrip('.')
+    filename = unidecode(filename, errors='replace', replace_str='_')
     tags = tags if tags else paper.tags
     path = os.path.join(*tags, filename)
     if root:

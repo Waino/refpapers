@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List
 from json import JSONDecodeError
 import json
+import re
 
 
 class DeepDefaultDict(dict):
@@ -56,3 +57,20 @@ class JsonFileCache:
         val = func(key)
         self._write(key, val)
         return val
+
+
+HYPHEN_JOIN_PREFIXES = ['cross', 'low', 'multi', 'n', 'non', 'pre', 'semi', 'sub']
+HYPHEN_PATTERNS = [
+    re.compile(r'\b(' + prefix + r')-([\w])', flags=re.IGNORECASE)
+    for prefix in HYPHEN_JOIN_PREFIXES
+]
+RE_INTRAWORD_HYPHEN = re.compile(r'([\w])-([\w])', flags=re.IGNORECASE)
+
+
+def beautify_hyphen_compounds(text: str) -> str:
+    # The selected prefixes are joined to the suffix by removal of the hyphe
+    for pattern in HYPHEN_PATTERNS:
+        text = pattern.sub(r'\1\2', text)
+    # The remaining intraword hyphens are converted to spaces
+    text = RE_INTRAWORD_HYPHEN.sub(r'\1 \2', text)
+    return text
