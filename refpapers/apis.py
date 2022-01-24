@@ -11,14 +11,18 @@ from refpapers.schema import Paper, BibtexKey
 from refpapers.utils import JsonFileCache
 
 
-def paper_from_metadata(meta: Dict[str, Any], path: Path) -> Paper:
-    bibtex = BibtexKey(meta['authors'][0].lower(), meta['year'], BibtexKey.title_word(meta['title']))
-    # TODO: replace too many authors with etAl (requires conf)
+def paper_from_metadata(meta: Dict[str, Any], path: Path, max_authors: int = -1) -> Paper:
+    authors = meta['authors']
+    if max_authors and max_authors > 1:
+        # replace too many authors with etAl
+        if len(authors) > max_authors:
+            authors = authors[:(max_authors - 1)] + ['etAl']
+    bibtex = BibtexKey(authors[0].lower(), meta['year'], BibtexKey.title_word(meta['title']))
     return Paper(
         path=path,
         bibtex=bibtex,
         title=meta['title'],
-        authors=meta['authors'],
+        authors=authors,
         year=meta['year'],
         pub_type=[],
         tags=[],
@@ -49,6 +53,7 @@ class CachedApi(ABC):
 
 class CrossrefApi(CachedApi):
     def __init__(self, conf: Conf):
+        self._conf = conf
         self._works = Works()
         self._cache = self._init_cache(conf, 'crossref')
 
@@ -56,7 +61,7 @@ class CrossrefApi(CachedApi):
         meta = self._cache.get(doi, self._fetch)
         if not meta:
             return None
-        return paper_from_metadata(meta, path)
+        return paper_from_metadata(meta, path, self._conf.max_authors)
 
     def _fetch(self, doi: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if DOI not found """
@@ -100,6 +105,7 @@ class CrossrefApi(CachedApi):
 
 class ArxivApi(CachedApi):
     def __init__(self, conf: Conf):
+        self._conf = conf
         self._cache = self._init_cache(conf, 'arxiv')
 
     def paper_from_id(self, id: str, path=None) -> Optional[Paper]:
@@ -108,7 +114,7 @@ class ArxivApi(CachedApi):
         meta = self._cache.get(id, self._fetch)
         if not meta:
             return None
-        return paper_from_metadata(meta, path)
+        return paper_from_metadata(meta, path, self._conf.max_authors)
 
     def _fetch(self, id: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if id not found """
@@ -135,6 +141,7 @@ class ArxivApi(CachedApi):
 
 class ScholarApi(CachedApi):
     def __init__(self, conf: Conf):
+        self._conf = conf
         self._cache = self._init_cache(conf, 'scholar')
         self._proxy_setup()
 
@@ -142,7 +149,7 @@ class ScholarApi(CachedApi):
         meta = self._cache.get(title, self._fetch)
         if not meta:
             return None
-        return paper_from_metadata(meta, path)
+        return paper_from_metadata(meta, path, self._conf.max_authors)
 
     def _proxy_setup(self):
         pg = ProxyGenerator()

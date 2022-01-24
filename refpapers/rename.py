@@ -160,7 +160,7 @@ class AutoRenamer:
                      ('authors', r'^[^0-9a-z].*', lambda x: x.split())],
                     fulltext_top_joined
                 )
-                paper = paper_from_metadata(meta, path)
+                paper = paper_from_metadata(meta, path, self.conf.max_authors)
 
         # TODO: prompt for pubtype
 
