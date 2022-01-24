@@ -39,12 +39,18 @@ class CachedApi(ABC):
             cache_dir = conf.paths.api_cache
         else:
             cache_dir = Path('/tmp')
-        return JsonFileCache(cache_dir / f'{name}.jsonl')
+        return JsonFileCache(
+            cache_dir / f'{name}.jsonl',
+            hit_func=self._cache_hit
+        )
 
     def _tags_from_path(self, file_path: Path) -> List[str]:
         dir_path, file_name = os.path.split(file_path)
         tags = dir_path.split(os.path.sep)
         return tags
+
+    def _cache_hit(self, key):
+        print(f'Using cached metadata for "{key}"')
 
     @abstractmethod
     def _fetch(self, id: str) -> Optional[Dict[str, Any]]:

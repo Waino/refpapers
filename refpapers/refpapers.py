@@ -1,13 +1,12 @@
 """Command line interface for refpapers."""
 
 import click
-import delegator  # type: ignore
 import logging
-import os
 from pathlib import Path
 from typing import Iterable
 
 from refpapers.conf import ensure_conf, load_conf, Conf, DEFAULT_CONFDIR, AllCategories
+from refpapers.doctypes import open_in_viewer
 from refpapers.filesystem import yield_actions, parse
 from refpapers.logger import ch
 from refpapers.schema import Paper
@@ -111,9 +110,7 @@ def subcommand_open(query: Iterable[str], confdir: Path) -> None:
         print('No papers matched the query')
         return
     path = papers[0].path
-    _, ending = os.path.splitext(path)
-    viewer = conf.software.get_viewer(ending)
-    delegator.run(f'{viewer} {path}', block=False)
+    open_in_viewer(path, conf)
 
 
 @cli.command(help='Check for data issues')  # type: ignore
@@ -164,17 +161,19 @@ def rename(path: Path, confdir: Path) -> None:
 
 
 @cli.command(help='Ingest files in inbox: auto-rename, commit, sync, index')  # type: ignore
+@click.option('--open', is_flag=True,
+              help='Open files in viewer before renaming.')
 @click.option('--path', type=Path, default=Path('.'),
               help='Path to inbox (default: current working directory)')
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')
-def inbox(path: Path, confdir: Path) -> None:
+def inbox(open: bool, path: Path, confdir: Path) -> None:
     conf, storedstate, decisions = load_conf(confdir)
     categories = AllCategories(conf).read()
 
     auto_renamer = AutoRenamer(conf, storedstate, decisions, categories)
-    auto_renamer.ingest_inbox(path)
+    auto_renamer.ingest_inbox(path, open_before_rename=open)
 
 
 if __name__ == '__main__':

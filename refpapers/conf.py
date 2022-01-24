@@ -39,7 +39,7 @@ class Software(BaseModel):
     def get_viewer(self, ending: str):
         ending = ending.strip('.')
         if ending not in self.viewers:
-            raise ValueError(f'To use this command, a viewer must set for {ending}')
+            raise ValueError(f'To use this command, a viewer must set for ending: {ending}')
         return self.viewers[ending]
 
     def get_extractor(self, ending: str, default='pdftotext'):

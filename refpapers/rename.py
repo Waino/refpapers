@@ -9,13 +9,14 @@ from shutil import move
 
 from refpapers.apis import CrossrefApi, ArxivApi, ScholarApi, paper_from_metadata
 from refpapers.conf import AllCategories
+from refpapers.doctypes import open_in_viewer
 from refpapers.filesystem import generate, yield_all_paths
 from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
 from refpapers.schema import Paper
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext, index_data
 from refpapers.utils import DeepDefaultDict
-from refpapers.view import LongTask, print_fulltext, print_details, question, prompt
+from refpapers.view import LongTask, print_fulltext, print_details, question, prompt, console
 
 
 class CategoryCompleter(Completer):
@@ -138,8 +139,7 @@ class AutoRenamer:
                 if paper:
                     ltask.set_status(ltask.OK)
         if not paper and arxiv:
-            with LongTask(f'ArXiv query... ({arxiv})') as ltask:
-                # FIXME: decide whether "arXiv:" is part of id or not
+            with LongTask(f'ArXiv query... (arXiv:{arxiv})') as ltask:
                 paper = self._arxiv.paper_from_id(arxiv)
                 if paper:
                     ltask.set_status(ltask.OK)
@@ -205,9 +205,15 @@ class AutoRenamer:
             logger.warning('Failed to gather metadata for renaming')
             return None
 
-    def ingest_inbox(self, path):
+    def ingest_inbox(self, path: Path, open_before_rename: bool):
+        if not self._check_inbox_path(path):
+            print('foo')
+            return
+        print('bar')
         # glob based on the suffixes that refpapers recognizes
         for ia in yield_all_paths(path, self.conf):
+            if open_before_rename:
+                open_in_viewer(ia.path, self.conf)
             new_path = self.rename(ia.path)
             if not new_path:
                 continue
@@ -220,6 +226,27 @@ class AutoRenamer:
                 git_annex_sync(self.conf.paths.data)
                 ltask.set_status(ltask.OK)
         index_data(full=False, conf=self.conf, storedstate=self.storedstate, decisions=self.decisions)
+
+    def _check_inbox_path(self, path: Path):
+        special_paths = [
+            self.conf.paths.index,
+            self.conf.paths.data,
+            self.conf.paths.log,
+            self.conf.paths.api_cache,
+            self.conf.paths.confdir,
+        ]
+        path = path.resolve()
+        for special_path in special_paths:
+            if not special_path:
+                continue
+            special_path = special_path.resolve()
+            if path == special_path:
+                console.print(
+                    f'[warning]Inbox path "{path}" equals one of the special paths defined in the conf. '
+                    'You do not want this. Aborting.[/warning]'
+                )
+                return False
+        return True
 
     def _generate_path(self, paper: Paper, category: str, suffix: str):
         tags = category.split('/')

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Callable
 from json import JSONDecodeError
 import json
 import re
@@ -24,9 +24,10 @@ class DeepDefaultDict(dict):
 
 class JsonFileCache:
     """ Json-L file-backed append-only key-value cache """
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, hit_func: Optional[Callable] = None):
         self.path = path
         self._data = self._read()
+        self.hit_func = hit_func
 
     def _read(self):
         result = dict()
@@ -53,6 +54,8 @@ class JsonFileCache:
 
     def get(self, key, func):
         if key in self._data:
+            if self.hit_func:
+                self.hit_func(key)
             return self._data[key]
         val = func(key)
         self._write(key, val)

@@ -24,6 +24,7 @@ RE_ARXIV = re.compile(
     r'arXiv:\s*[0-9]{4}\.[0-9]{4,5}(?:v[0-9]+)?',
     flags=re.IGNORECASE
 )
+RE_ARXIV_PREFIX = re.compile(r'arXiv:\s*', flags=re.IGNORECASE)
 
 
 def index_data(full: bool, conf: Conf, storedstate: StoredState, decisions: Decisions):
@@ -277,10 +278,10 @@ def extract_fulltext(path: Path, conf: Conf, decisions: Decisions) -> str:
     return fulltext
 
 
-def extract_ids_from_fulltext(fulltext: str, path: Path, conf: Conf) -> Tuple[str, str]:
+def extract_ids_from_fulltext(fulltext: str, path: Path, conf: Conf) -> Tuple[Optional[str], Optional[str]]:
     fulltext = fulltext[:conf.ids_chars]
     dois = set(RE_DOI.findall(fulltext))
-    arxivs = set(RE_ARXIV.findall(fulltext))
+    arxivs = set(RE_ARXIV_PREFIX.sub('', x) for x in RE_ARXIV.findall(fulltext))
     if len(dois) > 1:
         logger.warning(f'Found too many DOIs in {path}: {dois}')
     if len(arxivs) > 1:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-refpapers - FIXME
+refpapers - Manage and search bibliography from the command line
 """
 from refpapers.refpapers import cli
 from refpapers.view import print_list, print_details
@@ -13,4 +13,4 @@ __all__ = ['print_list', 'print_details', 'yield_all_paths', 'parse',
 
 __version__ = '0.0.1'
 __author__ = 'Stig-Arne Gronroos'
-__author_email__ = "stig-arne.gronroos@aalto.fi"
+__author_email__ = "stig-arne.gronroos@aalto.fi"    # FIXME
