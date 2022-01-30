@@ -222,6 +222,8 @@ class AutoRenamer:
                         os.makedirs(dir_path, exist_ok=True)
                         if dir_path.exists():
                             ltask.set_status(ltask.OK)
+                    # FIXME: remove root dir, split at separators. Save when done.
+                    # self.categories.add(new_category)
                 print(f'mv -i "{path}" "{new_path}"')
                 with LongTask('moving...') as ltask:
                     move(path, new_path)
