@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Generator, Tuple, Optional
 from whoosh import index, qparser  # type: ignore
+from whoosh.sorting import MultiFacet, ScoreFacet, FieldFacet   # type: ignore
 from rich.progress import track
 
 from refpapers.conf import Conf, StoredState, Decisions, AllCategories, GitNew
@@ -242,8 +243,15 @@ def search(
     ix = index.open_dir(conf.paths.index)
     qp = qparser.MultifieldParser(fields, schema=whoosh_schema)
     q = qp.parse(query)
+    # sort first by score, using as tiebreaker year
+    # (can't break ties using first author in this scheme)
+    sortedby = MultiFacet([
+        ScoreFacet(),
+        FieldFacet('year', reverse=True),
+    ])
+
     with ix.searcher() as s:
-        results = s.search(q, limit=limit)
+        results = s.search(q, limit=limit, sortedby=sortedby)
         for result in results:
             paper = result_to_paper(result)
             yield paper
