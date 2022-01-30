@@ -7,7 +7,7 @@ from whoosh.fields import Schema, TEXT, KEYWORD, ID, NUMERIC  # type: ignore
 
 RE_BIBTEX = re.compile('^([a-z].*)([0-9]{4})([a-z].*)$')
 RE_TITLE_WORD = re.compile('^([a-z].*)$')
-SKIP_TITLE_WORDS = {'a', 'an', 'the'}
+SKIP_TITLE_WORDS = {'a', 'an', 'on', 'in', 'the'}
 
 
 @dataclass

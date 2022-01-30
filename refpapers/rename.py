@@ -2,10 +2,12 @@ import re
 import os
 from collections import Counter, defaultdict
 from copy import copy
+from dataclasses import dataclass
 from pathlib import Path
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
-from typing import List, Optional, Tuple, Callable
 from shutil import move
+from typing import List, Optional, Callable
+from unidecode import unidecode
 
 from refpapers.apis import CrossrefApi, ArxivApi, ScholarApi, paper_from_metadata
 from refpapers.conf import AllCategories
@@ -88,27 +90,47 @@ def prompt_edit_path(path: Path) -> Path:
 
 RE_NONWORD = re.compile(r'\W')
 RE_MULTISPACE = re.compile(r'\s\s*')
+RE_TRAILING_NUMBER = re.compile(r'[0-9]*$')
 
 
-def prompt_metadata(fields: List[Tuple[str, Optional[str], Optional[Callable]]], fulltext: str):
+@dataclass
+class PromptField:
+    field: str
+    pattern: Optional[str] = None
+    prefunc: Optional[Callable] = None
+    postfunc: Optional[Callable] = None
+    extra: Optional[List[str]] = None
+
+
+def prompt_metadata(fields: List[PromptField], fulltext: str):
     fulltext = RE_NONWORD.sub(' ', fulltext)
     fulltext = RE_MULTISPACE.sub(' ', fulltext)
     words = set(fulltext.split())
     for word in set(words):
         words.add(word.lower())
     results = dict()
-    for field, pattern, postfunc in fields:
-        if pattern:
-            pat = re.compile(pattern)
+    for field in fields:
+        if field.pattern:
+            pat = re.compile(field.pattern)
             filtered_words = [word for word in sorted(words) if pat.match(word)]
         else:
-            filtered_words = sorted(words)
+            filtered_words = list(sorted(words))
+        if field.prefunc:
+            filtered_words = list(sorted(set(field.prefunc(word) for word in filtered_words)))
+        if field.extra:
+            filtered_words.extend(field.extra)
         completer = WordCompleter(filtered_words)
-        result = prompt(f'{field.capitalize()}: ', completer=completer)
-        if postfunc:
-            result = postfunc(result)
-        results[field] = result
+        result = prompt(f'{field.field.capitalize()}: ', completer=completer)
+        if field.postfunc:
+            result = field.postfunc(result)
+        results[field.field] = result
     return results
+
+
+def prep_author_completion(author: str) -> str:
+    author = RE_TRAILING_NUMBER.sub('', author)
+    author = unidecode(author, errors='replace', replace_str='_')
+    return author
 
 
 class AutoRenamer:
@@ -148,16 +170,24 @@ class AutoRenamer:
             fulltext_top_joined = '\n'.join(fulltext_top)
             # prompt for missing metadata and fill in the rest based on scholar, if turned on
             if self.conf.use_scholar:
-                meta = prompt_metadata([('title', None, None)], fulltext_top_joined)
+                meta = prompt_metadata([PromptField(field='title')], fulltext_top_joined)
                 with LongTask('Scholar query...') as ltask:
                     paper = self._scholar.paper_from_title(meta['title'])
                     if paper:
                         ltask.set_status(ltask.OK)
             else:
                 meta = prompt_metadata(
-                    [('title', None, lambda x: x.strip()),
-                     ('year', r'^[12]\d{3}$', None),
-                     ('authors', r'^[^0-9a-z].*', lambda x: x.split())],
+                    [
+                        PromptField(field='title', postfunc=lambda x: x.strip()),
+                        PromptField(field='year', pattern=r'^[12]\d{3}$'),
+                        PromptField(
+                            field='authors',
+                            pattern=r'^[^0-9a-z].*',
+                            prefunc=prep_author_completion,
+                            postfunc=lambda x: x.split(),
+                            extra=['etAl']
+                        )
+                    ],
                     fulltext_top_joined
                 )
                 paper = paper_from_metadata(meta, path, self.conf.max_authors)

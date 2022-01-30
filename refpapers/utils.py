@@ -77,3 +77,18 @@ def beautify_hyphen_compounds(text: str) -> str:
     # The remaining intraword hyphens are converted to spaces
     text = RE_INTRAWORD_HYPHEN.sub(r'\1 \2', text)
     return text
+
+
+CONTRACTIONS = [
+    ("n't", "nt"),
+    ("ll'em", "ll them"),
+    ("I'm", "I am"),
+    ("'s", "s"),
+]
+CONTRACTION_PATTERNS = [(re.compile(pat + r'\b'), repl) for (pat, repl) in CONTRACTIONS]
+
+
+def beautify_contractions(text: str) -> str:
+    for pattern, replacement in CONTRACTION_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text

@@ -7,7 +7,8 @@ from refpapers.filesystem import (
     ending_globs,
     keep_valid_endings,
     is_in_gitdir,
-    uncamel,
+    uncapword,
+    capword,
     parse,
     generate,
 )
@@ -69,8 +70,22 @@ def test_is_in_gitdir(path, expected):
         ('HTML', 'HTML'),
     ]
 )
-def test_uncamel(inp, expected):
-    assert uncamel(inp) == expected
+def test_uncapword(inp, expected):
+    assert uncapword(inp) == expected
+
+
+@pytest.mark.parametrize(
+    'inp,expected',
+    [
+        ('single', 'Single'),
+        ('foo bar', 'FooBar'),
+        ('foo bar baz', 'FooBarBaz'),
+        ('HTML', 'HTML'),
+        ('Sanchez-Cartagena', 'SanchezCartagena'),
+    ]
+)
+def test_capword(inp, expected):
+    assert capword(inp) == expected
 
 
 @pytest.mark.parametrize(

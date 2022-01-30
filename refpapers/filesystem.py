@@ -10,7 +10,7 @@ from unidecode import unidecode
 from refpapers.logger import logger
 from refpapers.conf import Decisions, Conf
 from refpapers.schema import Paper, BibtexKey, IndexingAction
-from refpapers.utils import beautify_hyphen_compounds
+from refpapers.utils import beautify_hyphen_compounds, beautify_contractions
 
 
 RE_NAME = re.compile(r'^[A-Za-z].*$')
@@ -20,7 +20,7 @@ RE_BOOK = re.compile(r'_[Bb]ook')
 RE_SLIDES = re.compile(r'_[Ss]lides')
 RE_SURVEY = re.compile(r'_[Ss]urvey')
 RE_THESIS = re.compile(r'_[Tt]hesis')
-RE_CAMEL = re.compile(r'([^A-Z])([A-Z])')
+RE_CAPWORDS = re.compile(r'([^A-Z])([A-Z])')
 RE_A_FOO = re.compile(r'(?<![A-Z])(A)([A-Z])')
 RE_MULTISPACE = re.compile(r'  *')
 RE_UNWANTED = re.compile(r'[^\w\+\.-]')
@@ -85,14 +85,19 @@ def apply_all_filters(
     yield from filtered_actions
 
 
-def uncamel(title: str) -> str:
-    title = RE_A_FOO.sub(_uncamel, title)
-    title = RE_CAMEL.sub(_uncamel, title)
-    return title
+def uncapword(text: str) -> str:
+    text = RE_A_FOO.sub(_uncapword, text)
+    text = RE_CAPWORDS.sub(_uncapword, text)
+    return text
 
 
-def _uncamel(m: Match) -> str:
+def _uncapword(m: Match) -> str:
     return '{} {}'.format(m.group(1), m.group(2).lower())
+
+
+def capword(text: str) -> str:
+    text = text.replace('-', ' ')
+    return ''.join(word.capitalize() if not word.isupper() else word for word in text.split())
 
 
 def yield_all_subdirs(root: Path):
@@ -165,7 +170,7 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
         pub_type.append('thesis')
         title = RE_THESIS.sub('', title)
     title = title.replace('_', ' - ')
-    title = uncamel(title)
+    title = uncapword(title)
     title = RE_MULTISPACE.sub(' ', title)
     year = int(m.group(2)[-4:])
     bibtex = BibtexKey(authors[0].lower(), year, BibtexKey.title_word(title))
@@ -188,13 +193,16 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
 
 
 def generate(paper: Paper, root=None, tags=None, suffix: str = 'pdf') -> str:
-    authors = '_'.join(author.capitalize() if author != 'etAl' else author
+    authors = '_'.join(capword(author) if author != 'etAl' else author
                        for author in paper.authors)
     title = paper.title
     title = beautify_hyphen_compounds(title)
-    title = ''.join(word.capitalize() for word in title.split())
+    title = beautify_contractions(title)
     title = title.replace(': ', '_')
     title = title.replace('-', '_')
+    title = title.replace('?', ' ')
+    title = RE_MULTISPACE.sub(' ', title)
+    title = capword(title)
     if len(paper.pub_type) > 0:
         flags = '_' + '_'.join(paper.pub_type)
     else:
