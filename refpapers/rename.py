@@ -120,7 +120,8 @@ def prompt_metadata(fields: List[PromptField], fulltext: str):
         if field.extra:
             filtered_words.extend(field.extra)
         completer = WordCompleter(filtered_words)
-        result = prompt(f'{field.field.capitalize()}: ', completer=completer)
+        fieldname = f'{field.field.capitalize()}:'
+        result = prompt(f'{fieldname:9} ', completer=completer)
         if field.postfunc:
             result = field.postfunc(result)
         results[field.field] = result
