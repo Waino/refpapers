@@ -259,9 +259,7 @@ class AutoRenamer:
 
     def ingest_inbox(self, path: Path, open_before_rename: bool):
         if not self._check_inbox_path(path):
-            print('foo')
             return
-        print('bar')
         # glob based on the suffixes that refpapers recognizes
         for ia in yield_all_paths(path, self.conf):
             if open_before_rename:
