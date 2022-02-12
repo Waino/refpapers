@@ -23,6 +23,7 @@ RE_THESIS = re.compile(r'_[Tt]hesis')
 RE_CAPWORDS = re.compile(r'([^A-Z])([A-Z])')
 RE_A_FOO = re.compile(r'(?<![A-Z])(A)([A-Z])')
 RE_MULTISPACE = re.compile(r'  *')
+RE_MULTIUNDER = re.compile(r'__*')
 RE_UNWANTED = re.compile(r'[^\w\+\.-]')
 
 SEPARATOR = '_-_'
@@ -215,6 +216,7 @@ def generate(paper: Paper, root=None, tags=None, suffix: str = 'pdf') -> str:
     filename = RE_UNWANTED.sub('_', filename)
     filename = filename.lstrip('.')
     filename = unidecode(filename, errors='replace', replace_str='_')
+    filename = RE_MULTIUNDER.sub('_', filename)
     tags = tags if tags else paper.tags
     path = os.path.join(*tags, filename)
     if root:

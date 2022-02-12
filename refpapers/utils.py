@@ -85,6 +85,7 @@ CONTRACTIONS = [
     ("ll'em", "ll them"),
     ("I'm", "I am"),
     ("'s", "s"),
+    ("won't", "wont"),
 ]
 CONTRACTION_PATTERNS = [(re.compile(pat + r'\b'), repl) for (pat, repl) in CONTRACTIONS]
 
