@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from shutil import move
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict, Any
 from unidecode import unidecode
 
 from refpapers.apis import CrossrefApi, ArxivApi, ScholarApi, paper_from_metadata
 from refpapers.conf import AllCategories
 from refpapers.doctypes import open_in_viewer
-from refpapers.filesystem import generate, yield_all_paths
+from refpapers.filesystem import generate, parse, yield_all_paths
 from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
 from refpapers.schema import Paper
@@ -102,13 +102,13 @@ class PromptField:
     extra: Optional[List[str]] = None
 
 
-def prompt_metadata(fields: List[PromptField], fulltext: str):
+def prompt_metadata(fields: List[PromptField], fulltext: str) -> Dict[str, Any]:
     fulltext = RE_NONWORD.sub(' ', fulltext)
     fulltext = RE_MULTISPACE.sub(' ', fulltext)
     words = set(fulltext.split())
     for word in set(words):
         words.add(word.lower())
-    results = dict()
+    results: Dict[str, Any] = dict()
     for field in fields:
         if field.pattern:
             pat = re.compile(field.pattern)
@@ -121,9 +121,15 @@ def prompt_metadata(fields: List[PromptField], fulltext: str):
             filtered_words.extend(field.extra)
         completer = WordCompleter(filtered_words)
         fieldname = f'{field.field.capitalize()}:'
-        result = prompt(f'{fieldname:9} ', completer=completer)
-        if field.postfunc:
-            result = field.postfunc(result)
+        result = None
+        while result is None:
+            result = prompt(f'{fieldname:9} ', completer=completer)
+            try:
+                if field.postfunc:
+                    result = field.postfunc(result)
+            except Exception:
+                console.print(f'[warning]Invalid input[/warning]. Must be accepted by {field.postfunc}')
+                result = None
         results[field.field] = result
     return results
 
@@ -180,7 +186,11 @@ class AutoRenamer:
                 meta = prompt_metadata(
                     [
                         PromptField(field='title', postfunc=lambda x: x.strip()),
-                        PromptField(field='year', pattern=r'^[12]\d{3}$'),
+                        PromptField(
+                            field='year',
+                            pattern=r'^[12]\d{3}$',
+                            postfunc=int,
+                        ),
                         PromptField(
                             field='authors',
                             pattern=r'^[^0-9a-z].*',
@@ -206,7 +216,11 @@ class AutoRenamer:
         if paper:
             new_path = paper.path
             # display results
-            print_details(paper)
+            parsed_paper, error = parse(new_path, root=self.conf.paths.data)
+            if error:
+                console.print(error.describe())
+                return None
+            print_details(parsed_paper)
             if paper.path.exists():
                 logger.warning(f'File already exists, will not overwrite: {new_path}')
                 return None
