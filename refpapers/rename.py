@@ -200,6 +200,7 @@ class AutoRenamer:
             return search(query, self.conf, self.decisions, limit=10, silent=True)
 
         category = prompt_category(self.categories, _search)
+        self.categories.add(category.split('/'))
         paper = self._generate_path(paper, category, suffix=path.suffix)
 
         if paper:

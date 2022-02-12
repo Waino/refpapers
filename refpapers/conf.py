@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from pydantic import BaseModel, validator, root_validator
-from typing import Dict, Generator, Optional, Set, List
+from typing import Dict, Generator, Optional, Set, Tuple, Sequence
 
 from refpapers.logger import add_file_handler
 from refpapers.view import question, prompt, console
@@ -206,10 +206,14 @@ class AllCategories:
             self.all_categories_path = conf.paths.confdir / 'all_categories.json'
         else:
             raise Exception('conf.paths.confdir must be set')
-        self.all_categories: Set[List[str]] = set()
+        # each category is stored as a tuple of keywords
+        self.all_categories: Set[Tuple[str, ...]] = set()
 
-    def add(self, category):
-        self.all_categories.add(category)
+    def add(self, category: Sequence[str]):
+        category_tpl: Tuple[str, ...] = tuple(category)
+        if category_tpl not in self.all_categories:
+            self.all_categories.add(category_tpl)
+            self.write()
 
     def read(self):
         if self.all_categories_path.exists():
@@ -221,7 +225,7 @@ class AllCategories:
         with self.all_categories_path.open('w') as fout:
             json.dump(list(sorted(self.all_categories)), fout)
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Tuple[str, ...], None, None]:
         yield from sorted(self.all_categories)
 
 
