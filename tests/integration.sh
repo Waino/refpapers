@@ -180,7 +180,8 @@ echo '["10.1101/708206", {"title": "Machine translation of cortical activity to 
 echo "# Creating dummy inbox papers..."
 mkdir -p "${INBOX_DIR}"
 pushd ${INBOX_DIR}
-echo -e "This file can be searched from crossref\ndoi: 10.1101/708206" > doi.txt
+# file name containing space
+echo -e "This file can be searched from crossref\ndoi: 10.1101/708206" > "doi given.txt"
 echo -e "This file can be searched from arxiv using the id arXiv:2004.04002" > arxiv.txt
 echo "No identifiers" > noid.txt
 

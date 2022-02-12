@@ -13,6 +13,7 @@ from refpapers.filesystem import yield_actions, parse, apply_all_filters
 from refpapers.git import current_commit, git_difftree, git_status
 from refpapers.logger import logger
 from refpapers.schema import Paper, BibtexKey, whoosh_schema, IndexingAction, SCHEMA_VERSION
+from refpapers.utils import q
 from refpapers.view import print_git_indexingaction, console
 
 
@@ -268,7 +269,7 @@ def extract_fulltext(path: Path, conf: Conf, decisions: Decisions) -> str:
         return ''
     resolved_path = path.resolve()
     start = datetime.now()
-    result = delegator.run(f'{extractor} {resolved_path} -')
+    result = delegator.run(f'{extractor} {q(resolved_path)} -')
     delta = datetime.now() - start
     total = delta.total_seconds()
     if not result.return_code == 0:

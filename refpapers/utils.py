@@ -3,6 +3,7 @@ from typing import List, Optional, Callable
 from json import JSONDecodeError
 import json
 import re
+import shlex
 
 
 class DeepDefaultDict(dict):
@@ -92,3 +93,7 @@ def beautify_contractions(text: str) -> str:
     for pattern, replacement in CONTRACTION_PATTERNS:
         text = pattern.sub(replacement, text)
     return text
+
+
+def q(path: Path):
+    return shlex.quote(str(path))

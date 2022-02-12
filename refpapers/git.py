@@ -4,6 +4,7 @@ from typing import Generator, Iterator, List, Tuple
 
 from refpapers.logger import logger
 from refpapers.schema import IndexingAction
+from refpapers.utils import q
 
 
 # main actions are A: add, M: modify, D: delete, (??: untracked)
@@ -12,7 +13,7 @@ from refpapers.schema import IndexingAction
 
 
 def current_commit(gitdir: Path) -> str:
-    result = delegator.run(f'git -C {gitdir} rev-parse HEAD')
+    result = delegator.run(f'git -C {q(gitdir)} rev-parse HEAD')
     if not result.return_code == 0:
         raise Exception(f'failed {result} {result.err}')
     return result.out
@@ -21,7 +22,7 @@ def current_commit(gitdir: Path) -> str:
 def git_difftree(gitdir: Path, commit: str) -> List[IndexingAction]:
     """ Parses the git diff-tree command to retrieve changes between
     the last indexed commit and HEAD """
-    result = delegator.run(f'git -C {gitdir} diff-tree -r --name-status -z {commit} HEAD')
+    result = delegator.run(f'git -C {q(gitdir)} diff-tree -r --name-status -z {commit} HEAD')
     if not result.return_code == 0:
         raise Exception(f'failed {result} {result.err}')
     fields = null_delimited(result.out)
@@ -45,7 +46,7 @@ def parse_difftree(fields: Iterator[str], gitdir: Path) -> Generator[IndexingAct
 
 def git_status(gitdir: Path) -> Tuple[List[IndexingAction], List[IndexingAction]]:
     """ Parses the git status command to retrieve staged and untracked changes """
-    result = delegator.run(f'git -C {gitdir} status --porcelain=1 --untracked-files')
+    result = delegator.run(f'git -C {q(gitdir)} status --porcelain=1 --untracked-files')
     if not result.return_code == 0:
         raise Exception(f'failed {result} {result.err}')
     staged = []
@@ -76,7 +77,7 @@ def git_status(gitdir: Path) -> Tuple[List[IndexingAction], List[IndexingAction]
 
 
 def git_annex_add(gitdir: Path, paper_path: Path):
-    command = f'git -C {gitdir} annex add {paper_path}'
+    command = f'git -C {q(gitdir)} annex add {paper_path}'
     print(command)
     result = delegator.run(command)
     if not result.return_code == 0:
@@ -84,7 +85,7 @@ def git_annex_add(gitdir: Path, paper_path: Path):
 
 
 def git_annex_sync(gitdir: Path):
-    command = f'git -C {gitdir} annex sync --content'
+    command = f'git -C {q(gitdir)} annex sync --content'
     print(command)
     result = delegator.run(command)
     if not result.return_code == 0:

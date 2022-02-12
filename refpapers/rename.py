@@ -17,7 +17,7 @@ from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
 from refpapers.schema import Paper
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext, index_data
-from refpapers.utils import DeepDefaultDict
+from refpapers.utils import DeepDefaultDict, q
 from refpapers.view import LongTask, print_fulltext, print_details, question, prompt, console
 
 
@@ -224,7 +224,7 @@ class AutoRenamer:
                             ltask.set_status(ltask.OK)
                     # FIXME: remove root dir, split at separators. Save when done.
                     # self.categories.add(new_category)
-                print(f'mv -i "{path}" "{new_path}"')
+                print(f'mv -i {q(path)} {q(new_path)}')
                 with LongTask('moving...') as ltask:
                     move(path, new_path)
                     if new_path.exists():
