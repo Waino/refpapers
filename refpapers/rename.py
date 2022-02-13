@@ -217,9 +217,13 @@ class AutoRenamer:
             new_path = paper.path
             # display results
             parsed_paper, error = parse(new_path, root=self.conf.paths.data)
-            if error:
+            while not parsed_paper:
                 console.print(error.describe())
-                return None
+                new_path = prompt_edit_path(new_path)
+                if new_path == Path(''):
+                    console.print('[status]empty path given, aborting[/status]')
+                    return None
+                parsed_paper, error = parse(new_path, root=self.conf.paths.data)
             print_details(parsed_paper)
             if paper.path.exists():
                 logger.warning(f'File already exists, will not overwrite: {new_path}')
