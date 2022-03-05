@@ -44,7 +44,7 @@ def index_data(full: bool, conf: Conf, storedstate: StoredState, decisions: Deci
         full = True
     if not full:
         commit = storedstate.read('last_indexed_commit')
-        if not commit:
+        if not commit or commit == 'initial':
             console.print('[status]No recorded git commit, performing full indexing[/status]')
             full = True
 

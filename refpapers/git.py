@@ -15,6 +15,8 @@ from refpapers.utils import q
 def current_commit(gitdir: Path) -> str:
     result = delegator.run(f'git -C {q(gitdir)} rev-parse HEAD')
     if not result.return_code == 0:
+        if "ambiguous argument 'HEAD': unknown revision" in result.err:
+            return 'initial'
         raise Exception(f'failed {result} {result.err}')
     return result.out
 

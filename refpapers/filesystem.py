@@ -98,7 +98,7 @@ def _uncapword(m: Match) -> str:
 
 def capword(text: str) -> str:
     text = text.replace('-', ' ')
-    return ''.join(word.capitalize() if not word.isupper() else word for word in text.split())
+    return ''.join(word.capitalize() for word in text.split())
 
 
 def yield_all_subdirs(root: Path):
@@ -199,8 +199,8 @@ def generate(paper: Paper, root=None, tags=None, suffix: str = 'pdf') -> str:
     title = paper.title
     title = beautify_hyphen_compounds(title)
     title = beautify_contractions(title)
-    title = title.replace(': ', '_')
-    title = title.replace('-', '_')
+    title = title.replace(': ', '_ ')
+    title = title.replace('-', '_ ')
     title = title.replace('?', ' ')
     title = RE_MULTISPACE.sub(' ', title)
     title = capword(title)

@@ -80,7 +80,7 @@ def test_uncapword(inp, expected):
         ('single', 'Single'),
         ('foo bar', 'FooBar'),
         ('foo bar baz', 'FooBarBaz'),
-        ('HTML', 'HTML'),
+        ('HTML', 'Html'),
         ('Sanchez-Cartagena', 'SanchezCartagena'),
     ]
 )
