@@ -18,7 +18,7 @@ Lightweight command-line tool to manage bibliography (pdf collection)
 .. image:: docs/source/figures/search_one_open.png
         :alt: Screenshot of search functionality
 
-Installation
+Installing
 ------------
 
   .. code-block:: bash
