@@ -15,6 +15,9 @@ Lightweight command-line tool to manage bibliography (pdf collection)
 * Free software: MIT License
 * Documentation: https://refpapers.readthedocs.io.
 
+.. image:: docs/source/figures/search_one_open.png
+        :alt: Screenshot of search functionality
+
 Installation
 ------------
 
@@ -196,6 +199,7 @@ For example, the following adds viewers for the file types :code:`*.pdf` and :co
 The latter will not have its fulltext indexed, because there is no extractor, but you can still search and view the files.
 
   .. code-block:: yaml
+
     viewers:
         pdf: "evince"
         djvu: "evince"
