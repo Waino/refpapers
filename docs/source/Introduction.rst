@@ -77,4 +77,9 @@ If you find refpapers to be useful when writing your thesis or other scientific 
 
   .. code-block:: bibtex
 
-    TODO
+    @misc{refpapers,
+        title={Refpapers: Lightweight command-line tool to manage bibliography},
+        author={Grönroos, Stig-Arne},
+        year={2022},
+        note={\url{Grönroos, Stig-Arne}},
+    }

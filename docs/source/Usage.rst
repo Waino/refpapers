@@ -11,6 +11,9 @@ The overall structure is :code:`refpapers <subcommand> [OPTIONS] [ARGUMENTS]`, f
 Subcommands for search
 ----------------------
 
+.. image:: figures/search_one_open.png
+        :alt: Screenshot of search functionality
+
 refpapers search
 ~~~~~~~~~~~~~~~~
 
@@ -39,6 +42,13 @@ The most reliable way to select a single paper is to search by bibtex key.
 Subcommands for managing your data
 ----------------------------------
 
+.. image:: figures/autocomplete_category.png
+        :alt: Screenshot of category autocomplete
+.. image:: figures/autocomplete_title.png
+        :alt: Screenshot of metadata autocomplete
+.. image:: figures/inbox.png
+        :alt: Screenshot of inbox subcommand
+
 refpapers index
 ~~~~~~~~~~~~~~~
 
@@ -61,6 +71,10 @@ Ingest files in inbox:
 * **commit** the new files into git-annex,
 * **sync** the contents of git-annex,
 * **index** to make the new files searchable.
+
+The :code:`--open` flag causes documents to be opened in the viewer before renaming.
+If you have the papers in fresh memory, you can omit this.
+Otherwise, use it to remind yourself what the paper was about.
 
 refpapers check
 ~~~~~~~~~~~~~~~

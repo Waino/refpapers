@@ -171,6 +171,7 @@ It is not recommended to use git without git-annex, as pdfs tend to be quite big
 
 In order for git to track the files, you need to commit them into git (note that :code:`inbox` does this for you).
 The option :code:`git_uncommitted` controls what to do for files that have not been commited:
+
 * :code:`WARN`: prints a warning.
 * :code:`IGNORE`: silently ignores the files when indexing.
 * :code:`ADD`: sloppily indexes also uncommited files. This can in some cases cause the index to get out of synch.
@@ -181,6 +182,7 @@ Paths
 
 The paths in which refpapers will look for papers or store its databases are defined in the section :code:`paths`.
 In a typical setup, there are three main directories that you should be aware of
+
 * **data**: The path to the directory where you keep your papers (PDFs). 
 * **inbox**: The directory where you keep incoming papers until you run the inbox command.
   This should be separate from the above data directory. This directory is not defined in the config.
@@ -246,4 +248,9 @@ If you find refpapers to be useful when writing your thesis or other scientific 
 
   .. code-block:: bibtex
 
-    TODO
+    @misc{refpapers,
+        title={Refpapers: Lightweight command-line tool to manage bibliography},
+        author={Grönroos, Stig-Arne},
+        year={2022},
+        note={\url{Grönroos, Stig-Arne}},
+    }
