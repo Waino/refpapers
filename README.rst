@@ -122,7 +122,7 @@ Configuration
 If you run refpapers without a configuration, it will ask for the information necessary to write a minimal config.
 However, to use all the features of refpapers, you should edit the configuration file.
 
-A full-featured example configuration file can be found in :code:`example_conf/conf.yml`
+A full-featured example configuration file can be found in `example_conf/conf.yml <https://github.com/Waino/refpapers/blob/master/example_conf/conf.yml>`_.
 
 My workflow
 -----------

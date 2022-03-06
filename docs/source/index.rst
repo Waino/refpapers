@@ -6,6 +6,8 @@
 Welcome to the documentation for refpapers !
 ============================================
 
+Source code on github: `<https://github.com/Waino/refpapers>`_
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

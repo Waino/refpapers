@@ -1,0 +1,19 @@
+fulltext_chars: 300000
+ids_chars: 5000
+max_authors: 5
+extract_max_seconds: 1.5
+use_git: True
+use_git_annex: True
+git_uncommitted: "WARN"
+paths:
+    data: "~/refpapers"
+    index: "~/.refpapers/index"
+    log: "~/.refpapers/log"
+    api_cache: "~/.refpapers/api_cache"
+software:
+    viewers:
+        pdf: "evince"
+        djvu: "evince"
+    extractors:
+        pdf: "pdftotext -l 20"
+        djvu: "None"
