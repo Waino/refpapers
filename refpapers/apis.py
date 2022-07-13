@@ -104,8 +104,12 @@ class CrossrefApi(CachedApi):
     @staticmethod
     def _get_authors_family(meta) -> List[str]:
         result = []
-        for author in meta['authors']:
-            result.append(author['family'])
+        if 'authors' in meta:
+            for author in meta['authors']:
+                result.append(author['family'])
+        elif 'author' in meta:
+            for author in meta['author']:
+                result.append(author['family'])
         return result
 
 
