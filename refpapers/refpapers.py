@@ -165,15 +165,17 @@ def rename(path: Path, confdir: Path) -> None:
               help='Open files in viewer before renaming.')
 @click.option('--path', type=Path, default=Path('.'),
               help='Path to inbox (default: current working directory)')
+@click.option('--shuffle', is_flag=True,
+              help='Shuffle the order of the inbox files.')
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')
-def inbox(open: bool, path: Path, confdir: Path) -> None:
+def inbox(open: bool, path: Path, shuffle: bool, confdir: Path) -> None:
     conf, storedstate, decisions = load_conf(confdir)
     categories = AllCategories(conf).read()
 
     auto_renamer = AutoRenamer(conf, storedstate, decisions, categories)
-    auto_renamer.ingest_inbox(path, open_before_rename=open)
+    auto_renamer.ingest_inbox(path, open_before_rename=open, shuffle=shuffle)
 
 
 if __name__ == '__main__':

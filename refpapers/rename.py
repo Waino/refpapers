@@ -1,12 +1,13 @@
-import re
 import os
+import random
+import re
 from collections import Counter, defaultdict
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from shutil import move
-from typing import List, Optional, Callable, Dict, Any
+from typing import List, Optional, Callable, Dict, Any, Generator, Union
 from unidecode import unidecode
 
 from refpapers.apis import CrossrefApi, ArxivApi, ScholarApi, paper_from_metadata
@@ -15,7 +16,7 @@ from refpapers.doctypes import open_in_viewer
 from refpapers.filesystem import generate, parse, yield_all_paths
 from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
-from refpapers.schema import Paper
+from refpapers.schema import Paper, IndexingAction
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext, index_data
 from refpapers.utils import DeepDefaultDict, q
 from refpapers.view import LongTask, print_fulltext, print_details, question, prompt, console
@@ -257,11 +258,16 @@ class AutoRenamer:
             logger.warning('Failed to gather metadata for renaming')
             return None
 
-    def ingest_inbox(self, path: Path, open_before_rename: bool):
+    def ingest_inbox(self, path: Path, open_before_rename: bool, shuffle: bool = False):
         if not self._check_inbox_path(path):
             return
         # glob based on the suffixes that refpapers recognizes
-        for ia in yield_all_paths(path, self.conf):
+        all_paths: Union[Generator[IndexingAction, None, None], List[IndexingAction]]
+        all_paths = yield_all_paths(path, self.conf)
+        if shuffle:
+            all_paths = list(all_paths)
+            random.shuffle(all_paths)
+        for ia in all_paths:
             if open_before_rename:
                 open_in_viewer(ia.path, self.conf)
             new_path = self.rename(ia.path)
