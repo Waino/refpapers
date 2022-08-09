@@ -287,10 +287,20 @@ def extract_fulltext(path: Path, conf: Conf, decisions: Decisions) -> str:
     return fulltext
 
 
+def remove_prefixes(ids):
+    filtered = set(
+        id for id in ids
+        if not any(id != other and other.startswith(id) for other in ids)
+    )
+    return filtered
+
+
 def extract_ids_from_fulltext(fulltext: str, path: Path, conf: Conf) -> Tuple[Optional[str], Optional[str]]:
     fulltext = fulltext[:conf.ids_chars]
     dois = set(RE_DOI.findall(fulltext))
+    dois = remove_prefixes(dois)
     arxivs = set(RE_ARXIV_PREFIX.sub('', x) for x in RE_ARXIV.findall(fulltext))
+    arxivs = remove_prefixes(arxivs)
     if len(dois) > 1:
         logger.warning(f'Found too many DOIs in {path}: {dois}')
     if len(arxivs) > 1:
