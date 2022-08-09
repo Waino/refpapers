@@ -204,6 +204,10 @@ class AutoRenamer:
                 )
                 paper = paper_from_metadata(meta, path, self.conf.max_authors)
 
+        if not paper:
+            console.print('[status]empty metadata given, aborting[/status]')
+            return None
+
         # TODO: prompt for pubtype
 
         # prompt for a category
@@ -270,7 +274,17 @@ class AutoRenamer:
         for ia in all_paths:
             if open_before_rename:
                 open_in_viewer(ia.path, self.conf)
-            new_path = self.rename(ia.path)
+            try:
+                new_path = self.rename(ia.path)
+            except EOFError as e:
+                # user pressed ^D
+                choice = question('Skip this one or exit early (^C to abort)', ['skip', 'exit'])
+                if choice == 'skip':
+                    continue
+                elif choice == 'exit':
+                    break
+                else:
+                    raise e
             if not new_path:
                 continue
             if self.conf.use_git_annex:
