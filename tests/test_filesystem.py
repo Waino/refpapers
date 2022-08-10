@@ -82,6 +82,10 @@ def test_uncapword(inp, expected):
         ('foo bar baz', 'FooBarBaz'),
         ('HTML', 'Html'),
         ('Sanchez-Cartagena', 'SanchezCartagena'),
+        ('CamachoCollados', 'CamachoCollados'),
+        ('fooBar', 'FooBar'),
+        ('FooBarBaz', 'FooBarBaz'),
+        ('FooBar-baz', 'FooBarBaz'),
     ]
 )
 def test_capword(inp, expected):

@@ -97,6 +97,7 @@ def _uncapword(m: Match) -> str:
 
 
 def capword(text: str) -> str:
+    text = uncapword(text)
     text = text.replace('-', ' ')
     return ''.join(word.capitalize() for word in text.split())
 
