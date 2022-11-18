@@ -189,7 +189,7 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
     arxiv = None
 
     return (
-        Paper(file_path, bibtex, title, authors, year, pub_type, tags, number, doi, arxiv),
+        Paper(file_path, bibtex, title, tuple(authors), year, tuple(pub_type), tuple(tags), number, doi, arxiv),
         None
     )
 

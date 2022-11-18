@@ -20,6 +20,7 @@ from refpapers.schema import Paper, IndexingAction
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext, index_data
 from refpapers.utils import DeepDefaultDict, q
 from refpapers.view import LongTask, print_fulltext, print_details, question, prompt, console
+from refpapers.qualitycheck import find_close_matches
 
 
 class CategoryCompleter(Completer):
@@ -230,6 +231,11 @@ class AutoRenamer:
                     return None
                 parsed_paper, error = parse(new_path, root=self.conf.paths.data)
             print_details(parsed_paper)
+            _, close_matches = find_close_matches(paper, self.conf)
+            if len(close_matches) > 0:
+                logger.warning(f'Found close matches in index:')
+                for match in close_matches:
+                    print_details(match)
             if paper.path.exists():
                 logger.warning(f'File already exists, will not overwrite: {new_path}')
                 return None
@@ -324,5 +330,5 @@ class AutoRenamer:
         # This violates the usual immutability of Paper, but we are modifying a copy
         result = copy(paper)
         result.path = path
-        result.tags = tags
+        result.tags = tuple(tags)
         return result

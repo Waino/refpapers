@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Tuple, Optional, Union
 from whoosh.analysis import StemmingAnalyzer, RegexTokenizer  # type: ignore
 from whoosh.fields import Schema, TEXT, KEYWORD, ID, NUMERIC  # type: ignore
 
@@ -10,7 +10,7 @@ RE_TITLE_WORD = re.compile('^([a-z].*)$')
 SKIP_TITLE_WORDS = {'a', 'an', 'on', 'in', 'the'}
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class BibtexKey:
     author: str
     year: int
@@ -39,15 +39,15 @@ class BibtexKey:
         return f'{self.author}{self.year}{self.word}'
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class Paper:
     path: Path
     bibtex: BibtexKey
     title: str
-    authors: List[str]
+    authors: Tuple[str, ...]
     year: int
-    pub_type: List[str]
-    tags: List[str]
+    pub_type: Tuple[str, ...]
+    tags: Tuple[str, ...]
     number: Optional[str]
     doi: Optional[str]
     arxiv: Optional[str]

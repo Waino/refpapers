@@ -84,7 +84,7 @@ def blending_columns(left: Renderable, right: Renderable) -> Table:
     return grid
 
 
-def render_authors(authors: List[str], truncate=True) -> str:
+def render_authors(authors: Tuple[str, ...], truncate=True) -> str:
     out = ['[authors.first]{}[/authors.first]'.format(authors[0])]
     if len(authors) > 1:
         out.append('[authors], ')
