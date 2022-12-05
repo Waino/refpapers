@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from crossref.restful import Works  # type: ignore
 from pathlib import Path
-from scholarly import scholarly, ProxyGenerator  # type: ignore
 from typing import Optional, List, Dict, Any
 import arxiv  # type: ignore
 import os
@@ -157,7 +156,7 @@ class ScholarApi(CachedApi):
     def __init__(self, conf: Conf):
         self._conf = conf
         self._cache = self._init_cache(conf, 'scholar')
-        self._proxy_setup()
+        self._has_proxy = False
 
     def paper_from_title(self, title: str, path=None) -> Optional[Paper]:
         meta = self._cache.get(title, self._fetch)
@@ -166,13 +165,18 @@ class ScholarApi(CachedApi):
         return paper_from_metadata(meta, path, self._conf.max_authors)
 
     def _proxy_setup(self):
+        from scholarly import scholarly, ProxyGenerator  # type: ignore # noqa
         pg = ProxyGenerator()
         pg.FreeProxies()
         scholarly.use_proxy(pg)
+        self._has_proxy = True
 
     def _fetch(self, title: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if id not found """
+        if not self._has_proxy:
+            self._proxy_setup()
         try:
+            from scholarly import scholarly  # type: ignore # noqa
             results = scholarly.search_pubs(title)
             result = next(results)
             title = result['bib']['title']
