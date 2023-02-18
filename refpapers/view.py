@@ -37,8 +37,7 @@ THEME = {
     'authors.first': 'white',
     'bib': 'dim cyan',
     'year': 'bold white',
-    'title.even': 'white',
-    'title.odd': 'bold black',
+    'title.even': 'cyan',
     'thesis': 'red',
     'survey': 'bold white',
     'heading': 'bold cyan',
@@ -101,11 +100,10 @@ def render_bibtex(bibtex: BibtexKey) -> str:
 
 
 def render_list_item(paper: Paper, i: int, grid: Table) -> None:
-    even = 'even' if i % 2 == 0 else 'odd'
     flags = ''.join(PUB_TYPE_FLAGS.get(pub_type, '') for pub_type in paper.pub_type)
     authors = render_authors(paper.authors)
     left = blending_columns(
-        authors,
+        '•',
         Text(paper.bibtex.author, style='bib', no_wrap=True)
     )
     mid = Text(str(paper.bibtex.year), style='year')
@@ -113,16 +111,17 @@ def render_list_item(paper: Paper, i: int, grid: Table) -> None:
         Text(paper.bibtex.word, style='bib', no_wrap=True),
         flags
     )
-    grid.add_row(left, mid, right, ' ', Text(paper.title, style=f'title.{even}'))
+    grid.add_row(left, mid, right, ' ', authors)
+    grid.add_row('', '', '', ' ', Text(paper.title, style='title.even'))
 
 
-def print_list_section(papers: Iterable[Paper], right_width: int) -> None:
+def print_list_section(papers: Iterable[Paper], left_width: int, right_width: int) -> None:
     grid = Table.grid(expand=True)
-    grid.add_column(ratio=1)                    # left: authors, bibauthor
+    grid.add_column(width=left_width)           # left: bibauthor
     grid.add_column(min_width=4, max_width=4)   # mid: year
     grid.add_column(min_width=right_width)      # right: bibword, flags
     grid.add_column(max_width=1)                # padding
-    grid.add_column(ratio=2)                    # title
+    grid.add_column(ratio=6)                    # authors / title
     for (i, paper) in enumerate(papers):
         render_list_item(paper, i, grid)
     console.print(grid)
@@ -155,14 +154,16 @@ def sorted_groups(papers: List[Paper], grouping_key) -> List[Tuple[str, List[Pap
 def print_list(papers: List[Paper], grouped=None) -> None:
     if len(papers) == 0:
         return
+    longest_author = max(len(paper.bibtex.author) for paper in papers)
     longest_bibword = max(len(paper.bibtex.word) for paper in papers)
+    left_width = max(12, longest_author + 3)
     right_width = longest_bibword + 2 + len('Pres')
     if grouped:
         for key, group in sorted_groups(papers, grouped):
             print_section_heading(key, grouped)
-            print_list_section(group, right_width)
+            print_list_section(group, left_width, right_width)
     else:
-        print_list_section(papers, right_width)
+        print_list_section(papers, left_width, right_width)
 
 
 def print_details(paper: Paper) -> None:
@@ -172,26 +173,23 @@ def print_details(paper: Paper) -> None:
     else:
         console.print(Text(str(paper.path), style='path', justify='right'))
     grid = Table.grid(expand=True)
-    grid.add_column(max_width=2)    # indent
-    grid.add_column(ratio=4)        # bibtex
-    grid.add_column(ratio=10)       # authors
-    grid.add_column(ratio=1)        # year
-    grid.add_column(ratio=2)        # pub_type
-    grid.add_column(ratio=5)        # paper.tags
+    grid.add_column(min_width=35, max_width=50)
+    grid.add_column(ratio=1)
     grid.add_row(
-        '  ',
-        render_bibtex(paper.bibtex),
+        '  ' + render_bibtex(paper.bibtex),
         render_authors(paper.authors, truncate=False),
-        str(paper.year),
-        ', '.join(paper.pub_type),
-        ' / '.join(paper.tags),
     )
-    console.print(grid)
+    tags_and_ids = ' / '.join(paper.tags)
     if paper.doi or paper.arxiv:
         doi = f'DOI: {paper.doi}' if paper.doi else ''
         arxiv = f'arXiv:{paper.arxiv}' if paper.arxiv else ''
         joiner = '\t\t' if paper.doi and paper.arxiv else ''
-        console.print(f'{doi}{joiner}{arxiv}')
+        tags_and_ids += f'    {doi}{joiner}{arxiv}'
+    grid.add_row(
+        ', '.join(paper.pub_type),
+        tags_and_ids,
+    )
+    console.print(grid)
 
 
 def expand_choice(prefix: str, choices: List[str]) -> Optional[str]:
