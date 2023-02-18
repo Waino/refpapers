@@ -232,7 +232,7 @@ def prompt(
 def print_git_indexingaction(ia: IndexingAction, phase: str):
     action_map = {'A': 'added', 'M': 'modified', 'D': 'deleted', '??': 'untracked'}
     expanded = action_map.get(ia.action, ia.action)
-    console.print(f'[{phase.lower()}]{phase}[/{phase.lower()}] [action]{expanded}[/action] {ia.paper}')
+    console.print(f'[{phase.lower()}]{phase:10}[/{phase.lower()}] [action]{expanded:10}[/action] {ia.paper}')
 
 
 class LongTaskStatus(Enum):
@@ -300,6 +300,7 @@ class LongTask:
 
 
 def print_fulltext(fulltext: List[str], path: Path) -> None:
+    print('\n')
     console.rule(f'[rule.line]─ [heading]Head of {path}[/heading]', align='left')
     for line in fulltext:
         print(line)

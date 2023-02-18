@@ -14,7 +14,7 @@ from refpapers.git import current_commit, git_difftree, git_status
 from refpapers.logger import logger
 from refpapers.schema import Paper, BibtexKey, whoosh_schema, IndexingAction, SCHEMA_VERSION
 from refpapers.utils import q
-from refpapers.view import print_git_indexingaction, console
+from refpapers.view import LongTask, print_git_indexingaction, console
 
 
 RE_DOI = re.compile(
@@ -173,17 +173,20 @@ def _index_papers(papers: List[IndexingAction], full: bool, conf: Conf, decision
         elif ia.action == 'D':
             deleted += 1
             w.delete_by_term('path', path)
-    w.commit()
-    decisions.write()
-    all_categories.write()
-    delta = datetime.now() - start
-    total = delta.total_seconds()
-    per_paper = total / len(papers)
     add_del = '' if full else f' ({added} added/{deleted} deleted)'
-    console.print(
-        f'[status]Indexed [status.hi]{len(papers)} papers{add_del}[/status.hi]'
-        f' in [status.hi]{total} seconds[/status.hi] ({per_paper} per paper)[/status]'
-    )
+    message = f'[status]Indexing [status.hi]{len(papers)} papers{add_del}[/status.hi][/status]'
+    with LongTask(message) as ltask:
+        w.commit()
+        decisions.write()
+        all_categories.write()
+        delta = datetime.now() - start
+        total = delta.total_seconds()
+        per_paper = total / len(papers)
+        ltask.message = (
+            f'[status]Indexed [status.hi]{len(papers)} papers{add_del}[/status.hi]'
+            f' in [status.hi]{total} seconds[/status.hi] ({per_paper} per paper)[/status]'
+        )
+        ltask.set_status(ltask.OK)
 
 
 def deduplicate(papers: List[IndexingAction], conf) -> List[IndexingAction]:
@@ -273,7 +276,7 @@ def extract_fulltext(path: Path, conf: Conf, decisions: Decisions) -> str:
     delta = datetime.now() - start
     total = delta.total_seconds()
     if not result.return_code == 0:
-        print(f'Extraction failed for {resolved_path}')
+        logger.warning(f'Extraction failed for {resolved_path}')
         return ''
     fulltext = result.out
     if conf.fulltext_chars and len(fulltext) > conf.fulltext_chars:
