@@ -19,7 +19,7 @@ from refpapers.view import (
     console,
 )
 from refpapers.rename import AutoRenamer
-from refpapers.qualitycheck import find_close_matches
+from refpapers.qualitycheck import all_duplicates
 
 
 class AliasedGroup(click.Group):
@@ -114,17 +114,14 @@ def subcommand_open(query: Iterable[str], confdir: Path) -> None:
     open_in_viewer(path, conf)
 
 
-@cli.command(help='Show duplicates of one indexed paper')  # type: ignore
-@click.argument('query', type=str, nargs=-1)
+@cli.command(help='Show duplicates')  # type: ignore
 @click.option('--confdir', type=Path, default=DEFAULT_CONFDIR,
               help='Path to directory containing conf.yml and stored state.'
               f' Default: {DEFAULT_CONFDIR}')
-def dupes(query: str, confdir: Path) -> None:
+def dupes(confdir: Path) -> None:
+    # TODO: move into check
     conf, storedstate, decisions = load_conf(confdir)
-    query = ' '.join(query)
-    reference, dupes = find_close_matches(query, conf, limit=2)
-    print_details(reference)
-    print_list(dupes)
+    all_duplicates(conf, decisions)
 
 
 @cli.command(help='Check for data issues')  # type: ignore

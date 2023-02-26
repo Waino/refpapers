@@ -192,23 +192,41 @@ def print_details(paper: Paper) -> None:
     console.print(grid)
 
 
-def expand_choice(prefix: str, choices: List[str]) -> Optional[str]:
-    for choice in choices:
-        if choice.startswith(prefix):
-            return choice
+def expand_choice(query: str, choices: Dict[str, str]) -> Optional[str]:
+    if query in choices:
+        # keys have priority
+        return choices[query]
+    matches = [choice for choice in choices.values() if query in choice]
+    if len(matches) == 1:
+        # accept any unique substring
+        return matches[0]
+    matches = [choice for choice in matches if choice.startswith(query)]
+    if len(matches) == 1:
+        # accept a unique query even if it occurs as a substring later
+        return matches[0]
+    # otherwise too ambiguous
     return None
 
 
-def question(prompt_str: str, choices: List[str]) -> Optional[str]:
-    assert len(set(choice[0] for choice in choices)) == len(choices), \
-        'Choices must have unique first chars'
-    text = [f'[prompt]{prompt_str}:[/prompt]']
-    for choice in choices:
-        text.append(f' [choice]({choice[0]})[/choice]{choice[1:]}')
-    text.append(' ? ')
-    completer = WordCompleter(choices)
-    prefix = prompt(''.join(text), completer=completer)
-    expanded = expand_choice(prefix, choices)
+def question(prompt_str: str, choices: Union[List[str], Dict[str, str]]) -> Optional[str]:
+    if isinstance(choices, list):
+        assert len(set(choice[0] for choice in choices)) == len(choices), \
+            'Choices must have unique first chars'
+        choices_dict: Dict[str, str] = {choice[0]: choice for choice in choices}
+        choices_list = choices
+    else:
+        for key in choices.keys():
+            assert len(key) == 1, f'Choice keys must be single characters, got "{key}"'
+        choices_dict = choices
+        choices_list = list(choices.values())
+    choice_texts = []
+    for key, choice in choices_dict.items():
+        choice_texts.append(choice.replace(key, f'[choice]({key})[/choice]', 1))
+    choice_texts_flat = ', '.join(choice_texts)
+    text = f'[prompt]{prompt_str}:[/prompt] {choice_texts_flat}? '
+    completer = WordCompleter(choices_list)
+    prefix = prompt(text, completer=completer)
+    expanded = expand_choice(prefix, choices_dict)
     return expanded
 
 

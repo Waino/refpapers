@@ -1,12 +1,15 @@
 import Levenshtein
 import random
+from rich.progress import track
 from typing import Sequence, Set, Tuple, List, Union
 from whoosh import index, qparser  # type: ignore
+from whoosh.query import Every  # type: ignore
 from whoosh.sorting import MultiFacet, ScoreFacet, FieldFacet   # type: ignore
 
-from refpapers.conf import Conf
+from refpapers.conf import Conf, Decisions
 from refpapers.schema import Paper, whoosh_schema
 from refpapers.search import result_to_paper
+from refpapers.view import print_details, question, console
 
 MAX_YEAR_DIFF = 10
 
@@ -131,9 +134,15 @@ def paper_distance(a: Paper, b: Paper) -> float:
     return weighted
 
 
-def find_close_matches(query: Union[str, Paper], conf: Conf, limit=10, max_dist=0.35) -> Tuple[Paper, List[Paper]]:
+def find_close_matches(
+    query: Union[str, Paper],
+    conf: Conf,
+    limit=10,
+    max_dist=0.35,
+    include_exact=False
+) -> Tuple[Paper, List[Tuple[float, Paper]]]:
     if isinstance(query, Paper):
-        reference, candidates = more_like_paper(query, conf, limit)
+        reference, candidates = more_like_paper(query, conf, limit, include_exact=include_exact)
     else:
         reference, candidates = more_like_query(query, conf, limit)
     # sort by custom distance measure
@@ -145,7 +154,7 @@ def find_close_matches(query: Union[str, Paper], conf: Conf, limit=10, max_dist=
         (dist, candidate) for (dist, candidate) in candidates_with_distance
         if dist <= max_dist
     ]
-    return reference, [candidate for dist, candidate in candidates_with_distance]
+    return reference, candidates_with_distance
 
 
 def more_like_query(
@@ -178,7 +187,7 @@ def more_like_query(
 
 
 def more_like_paper(
-    paper: Paper, conf: Conf, limit=10,
+    paper: Paper, conf: Conf, limit=10, include_exact=False,
 ) -> Tuple[Paper, Set[Paper]]:
     triples = set()
     for _ in range(3):
@@ -205,5 +214,57 @@ def more_like_paper(
                 continue
             for result in results:
                 result_paper = result_to_paper(result)
+                if not include_exact and result_paper == paper:
+                    # Don't include the paper itself
+                    continue
                 out.add(result_paper)
     return paper, out
+
+
+def all_duplicates(conf: Conf, decisions: Decisions):
+    ix = index.open_dir(conf.paths.index)
+    all_dupes = dict()
+    ignored = set((x.arg1, x.arg2) for x in decisions.get(decisions.IGNORE_DUPLICATE))
+    with ix.searcher() as s:
+        all_indexed_papers = Every()
+        results = s.search(all_indexed_papers, limit=None)
+        for cursor in track(results, description='Scoring potential duplicates...'):
+            cursor_paper = result_to_paper(cursor)
+            _, dupes = find_close_matches(cursor_paper, conf=conf, limit=10, max_dist=0.35, include_exact=False)
+            for dist, candidate in dupes:
+                if (str(cursor_paper.path), str(candidate.path)) in ignored:
+                    continue
+                if (str(candidate.path), str(cursor_paper.path)) in ignored:
+                    continue
+                pair = tuple(sorted([cursor_paper, candidate]))
+                all_dupes[pair] = dist
+    sorted_dupes = list(sorted(all_dupes.items(), key=lambda tpl: tpl[1]))
+
+    tot = len(sorted_dupes)
+    for (i, ((paper_a, paper_b), distance)) in enumerate(sorted_dupes):
+        console.print(f'Duplicate {i + 1}/{tot}. Distance: {distance}')
+        print_details(paper_a)
+        print_details(paper_b)
+        # TODO: diff file contents
+        choice = question(
+            'How to resolve?',
+            {
+                '1': 'delete the 1st paper',
+                '2': 'delete the 2nd paper',
+                'i': 'ignore it in the future',
+                's': 'skip',
+            }
+        )
+        if choice == 'delete the 1st paper':
+            console.print('[warning]You can delete the 1st file by copypasting this command:[/warning]')
+            print(f'rm {paper_a.path}')
+        elif choice == 'delete the 2nd paper':
+            console.print('[warning]You can delete the 2nd file by copypasting this command:[/warning]')
+            print(f'rm {paper_b.path}')
+        elif choice == 'ignore it in the future':
+            decisions.add(decisions.IGNORE_DUPLICATE, paper_a.path, paper_b.path)
+            decisions.write()
+            pass
+        # TODO: add choice 'override bibtex keys'
+        elif choice == 'skip':
+            pass

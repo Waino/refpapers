@@ -231,15 +231,16 @@ class AutoRenamer:
                     return None
                 parsed_paper, error = parse(new_path, root=self.conf.paths.data)
             print_details(parsed_paper)
-            _, close_matches = find_close_matches(paper, self.conf)
+            _, close_matches = find_close_matches(paper, self.conf, include_exact=True)
             if len(close_matches) > 0:
-                logger.warning(f'Found close matches in index:')
-                for match in close_matches:
+                logger.warning('Found close matches in index:')
+                for dist, match in close_matches:
                     print_details(match)
             if paper.path.exists():
                 logger.warning(f'File already exists, will not overwrite: {new_path}')
                 return None
             # prompt for confirmation
+            # TODO: add choice 'override bibtex key'
             choice = question('Apply the rename', ['yes', 'no', 'edit'])
             if choice == 'edit':
                 new_path = prompt_edit_path(new_path)

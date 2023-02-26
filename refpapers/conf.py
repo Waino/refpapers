@@ -156,6 +156,7 @@ class Decision:
 class Decisions:
     IGNORE = 'IGNORE'
     FULLTEXT_TOO_SLOW = 'FULLTEXT_TOO_SLOW'
+    IGNORE_DUPLICATE = 'IGNORE_DUPLICATE'
 
     def __init__(self, confdir: Path = DEFAULT_CONFDIR):
         self._path = confdir / 'decisions'

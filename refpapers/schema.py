@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from functools import total_ordering
 from pathlib import Path
 from typing import Tuple, Optional, Union
 from whoosh.analysis import StemmingAnalyzer, RegexTokenizer  # type: ignore
@@ -39,7 +40,8 @@ class BibtexKey:
         return f'{self.author}{self.year}{self.word}'
 
 
-@dataclass(unsafe_hash=True)
+@total_ordering
+@dataclass(unsafe_hash=True, eq=True)
 class Paper:
     path: Path
     bibtex: BibtexKey
@@ -55,6 +57,16 @@ class Paper:
     @property
     def suffix(self):
         return self.path.suffix
+
+    def __lt__(self, other: "Paper"):
+        my_bibtex = str(self.bibtex)
+        other_bibtex = str(other.bibtex)
+        if my_bibtex < other_bibtex:
+            return True
+        if other_bibtex < my_bibtex:
+            return False
+        else:
+            return str(self) < str(other)
 
 
 @dataclass
