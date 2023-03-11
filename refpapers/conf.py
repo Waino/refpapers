@@ -157,6 +157,7 @@ class Decisions:
     IGNORE = 'IGNORE'
     FULLTEXT_TOO_SLOW = 'FULLTEXT_TOO_SLOW'
     IGNORE_DUPLICATE = 'IGNORE_DUPLICATE'
+    OVERRIDE_BIBTEX = 'OVERRIDE_BIBTEX'
 
     def __init__(self, confdir: Path = DEFAULT_CONFDIR):
         self._path = confdir / 'decisions'

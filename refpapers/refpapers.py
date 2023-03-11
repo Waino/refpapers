@@ -141,7 +141,8 @@ def check(confdir: Path) -> None:
         ' either rename the file and choose [choice]ok[/choice],'
         ' or [choice]ignore[/choice] it in the future.'
     )
-    parse_results = [parse(ia.path, conf.paths.data) for ia in actions]
+    bibtex_overrides = {Path(decision.arg1): decision.arg2 for decision in decisions.get('OVERRIDE_BIBTEX')}
+    parse_results = [parse(ia.path, conf.paths.data, bibtex_overrides) for ia in actions]
     errors = [error for paper, error in parse_results if error is not None]
     total = len(errors)
     console.print(f'[status]Detected {total} files with problems[/status]')

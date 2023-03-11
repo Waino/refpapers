@@ -246,6 +246,7 @@ def all_duplicates(conf: Conf, decisions: Decisions):
         print_details(paper_a)
         print_details(paper_b)
         # TODO: diff file contents
+        # TODO: override bibtex of 1, 2, or both (prompt both)
         choice = question(
             'How to resolve?',
             {

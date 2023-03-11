@@ -6,9 +6,10 @@ from typing import Tuple, Optional, Union
 from whoosh.analysis import StemmingAnalyzer, RegexTokenizer  # type: ignore
 from whoosh.fields import Schema, TEXT, KEYWORD, ID, NUMERIC  # type: ignore
 
-RE_BIBTEX = re.compile('^([a-z].*)([0-9]{4})([a-z].*)$')
+RE_BIBTEX = re.compile('^([a-z-].*)([0-9]{4})([a-z-].*)$')
 RE_TITLE_WORD = re.compile('^([a-z].*)$')
 SKIP_TITLE_WORDS = {'a', 'an', 'on', 'in', 'the'}
+RE_UNWANTED = re.compile(r'[^\w\+\.-]')
 
 
 @dataclass(unsafe_hash=True)
@@ -29,6 +30,7 @@ class BibtexKey:
     def title_word(title):
         for word in title.split():
             word = word.lower()
+            word = RE_UNWANTED.sub('', word)
             if not RE_TITLE_WORD.match(word):
                 continue
             if word in SKIP_TITLE_WORDS:

@@ -16,7 +16,7 @@ from refpapers.doctypes import open_in_viewer
 from refpapers.filesystem import generate, parse, yield_all_paths
 from refpapers.git import git_annex_add, git_annex_sync
 from refpapers.logger import logger
-from refpapers.schema import Paper, IndexingAction
+from refpapers.schema import Paper, IndexingAction, BibtexKey
 from refpapers.search import search, extract_fulltext, extract_ids_from_fulltext, index_data
 from refpapers.utils import DeepDefaultDict, q
 from refpapers.view import LongTask, print_fulltext, print_details, question, prompt, console
@@ -90,6 +90,15 @@ def prompt_edit_path(path: Path) -> Path:
     return Path(result)
 
 
+def prompt_bibtex(bibtex: BibtexKey) -> BibtexKey:
+    result = prompt('BibTeX key: ', default=str(bibtex))
+    try:
+        bibtex = BibtexKey.parse(result)
+    except Exception:
+        logger.error(f'Unable to parse {result} as a BibTeX key')
+    return bibtex
+
+
 RE_NONWORD = re.compile(r'\W')
 RE_MULTISPACE = re.compile(r'\s\s*')
 RE_TRAILING_NUMBER = re.compile(r'[0-9]*$')
@@ -153,8 +162,9 @@ class AutoRenamer:
         self._arxiv = ArxivApi(conf)
         self._scholar = ScholarApi(conf) if conf.use_scholar else None
 
-    def rename(self, path):
+    def rename(self, path: Path) -> Optional[Path]:
         fulltext = extract_fulltext(path, self.conf, self.decisions)
+        bibtex_overrides = {Path(decision.arg1): decision.arg2 for decision in self.decisions.get('OVERRIDE_BIBTEX')}
 
         # preprocess fulltext and display it
         fulltext_top = [line for line in fulltext.split('\n') if len(line.strip()) > 0]
@@ -222,29 +232,51 @@ class AutoRenamer:
         if paper:
             new_path = paper.path
             # display results
-            parsed_paper, error = parse(new_path, root=self.conf.paths.data)
+            parsed_paper, error = parse(
+                new_path,
+                root=self.conf.paths.data,
+                bibtex_overrides=bibtex_overrides,
+            )
             while not parsed_paper:
-                console.print(error.describe())
+                if error:
+                    console.print(error.describe())
                 new_path = prompt_edit_path(new_path)
                 if new_path == Path(''):
                     console.print('[status]empty path given, aborting[/status]')
                     return None
-                parsed_paper, error = parse(new_path, root=self.conf.paths.data)
+                parsed_paper, error = parse(
+                    new_path,
+                    root=self.conf.paths.data,
+                    bibtex_overrides=bibtex_overrides
+                )
             print_details(parsed_paper)
             _, close_matches = find_close_matches(paper, self.conf, include_exact=True)
             if len(close_matches) > 0:
                 logger.warning('Found close matches in index:')
                 for dist, match in close_matches:
                     print_details(match)
-            if paper.path.exists():
-                logger.warning(f'File already exists, will not overwrite: {new_path}')
-                return None
-            # prompt for confirmation
-            # TODO: add choice 'override bibtex key'
-            choice = question('Apply the rename', ['yes', 'no', 'edit'])
-            if choice == 'edit':
-                new_path = prompt_edit_path(new_path)
-                choice = 'yes'
+            choice = None
+            while choice not in {'yes', 'no'}:
+                if new_path.exists():
+                    logger.warning(f'File already exists, will not overwrite: {new_path}')
+                    return None
+                # prompt for confirmation
+                choice = question('Apply the rename', ['yes', 'no', 'edit', 'override bibtex key'])
+                if choice == 'edit':
+                    new_path = prompt_edit_path(new_path)
+                if choice == 'override bibtex key':
+                    bibtex = prompt_bibtex(paper.bibtex)
+                    self.decisions.add('OVERRIDE_BIBTEX', new_path, str(bibtex))
+                    bibtex_overrides[new_path] = str(bibtex)
+                if choice not in {'yes', 'no'}:
+                    parsed_paper, error = parse(
+                        new_path,
+                        root=self.conf.paths.data,
+                        bibtex_overrides=bibtex_overrides,
+                    )
+                    if parsed_paper:
+                        print_details(parsed_paper)
+
             # apply rename
             if choice == 'yes':
                 dir_path = new_path.parent
@@ -257,7 +289,7 @@ class AutoRenamer:
                     # self.categories.add(new_category)
                 print(f'mv -i {q(path)} {q(new_path)}')
                 with LongTask('moving...') as ltask:
-                    move(path, new_path)
+                    move(str(path), str(new_path))
                     if new_path.exists():
                         ltask.set_status(ltask.OK)
                         return new_path

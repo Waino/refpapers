@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Match, Generator, Iterable, Optional, Tuple
+from typing import Dict, Generator, Iterable, List, Match, Optional, Tuple
 from unidecode import unidecode
 
 from refpapers.logger import logger
@@ -115,7 +115,11 @@ class ParseError:
         return f'{self.reason:18} - {self.path}'
 
 
-def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseError]]:
+def parse(
+    file_path: Path,
+    root: Path,
+    bibtex_overrides: Dict[Path, str],
+) -> Tuple[Optional[Paper], Optional[ParseError]]:
     dir_path, file_name = os.path.split(file_path)
     tags = dir_path.split(os.path.sep)
     # remove root dir from tags
@@ -175,12 +179,17 @@ def parse(file_path: Path, root: Path) -> Tuple[Optional[Paper], Optional[ParseE
     title = uncapword(title)
     title = RE_MULTISPACE.sub(' ', title)
     year = int(m.group(2)[-4:])
-    bibtex = BibtexKey(authors[0].lower(), year, BibtexKey.title_word(title))
     try:
-        BibtexKey.parse(str(bibtex))
-    except Exception:
-        reason_raw = f'invalid BibTex key {bibtex}'
-        reason_fmt = f'invalid BibTex key [warning]{bibtex}[/warning]'
+        if file_path in bibtex_overrides:
+            bibtex_str = bibtex_overrides[file_path]
+            bibtex = BibtexKey.parse(bibtex_str)
+        else:
+            bibtex = BibtexKey(authors[0].lower(), year, BibtexKey.title_word(title))
+            bibtex_str = str(bibtex)
+            BibtexKey.parse(str(bibtex))
+    except Exception as e:
+        reason_raw = f'invalid BibTex key {bibtex_str}. Exception: {e}'
+        reason_fmt = f'invalid BibTex key [warning]{bibtex_str}[/warning]'
         logger.warning(FMT_PARSE_ERROR.format(
             reason=reason_raw, file_path=file_path
         ))

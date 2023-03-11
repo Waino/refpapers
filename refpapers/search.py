@@ -99,9 +99,10 @@ def _find_papers_to_index(
 
         actions = list(apply_all_filters(actions, conf, decisions))
 
+    bibtex_overrides = {Path(decision.arg1): decision.arg2 for decision in decisions.get('OVERRIDE_BIBTEX')}
     papers = []
     for ia in actions:
-        paper, error = parse(ia.path, conf.paths.data)
+        paper, error = parse(ia.path, conf.paths.data, bibtex_overrides)
         if not paper:
             continue
         papers.append(IndexingAction(ia.action, paper))

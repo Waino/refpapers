@@ -107,7 +107,7 @@ def test_capword(inp, expected):
 )
 def test_parse_generate(path):
     root = 'r'
-    paper, error = parse(Path(path), root)
+    paper, error = parse(Path(path), root, dict())
     out = generate(paper, root)
     assert out == path, f'{path}\n -> {paper}\n -> {out}'
 
@@ -123,24 +123,33 @@ def test_parse_generate(path):
 )
 def test_parse_errors(path):
     root = 'r'
-    paper, error = parse(Path(path), root)
+    paper, error = parse(Path(path), root, dict())
     assert paper is None
     assert error is not None
 
 
 def test_suffix():
     root = 'r'
-    assert parse(Path('r/A_-_T_2021.pdf'), root)[0].suffix == '.pdf'
-    assert parse(Path('r/A_-_T_2021.djvu'), root)[0].suffix == '.djvu'
+    assert parse(Path('r/A_-_T_2021.pdf'), root, dict())[0].suffix == '.pdf'
+    assert parse(Path('r/A_-_T_2021.djvu'), root, dict())[0].suffix == '.djvu'
 
 
 def test_path():
     root = 'r'
     path = Path('r/A_-_T_2021.pdf')
-    paper, error = parse(path, root)
+    paper, error = parse(path, root, dict())
 
     ia_path = IndexingAction('A', path)
     ia_paper = IndexingAction('A', paper)
     assert ia_path.path == path
     assert ia_paper.path == path
     assert ia_path.path == ia_paper.path
+
+
+def test_bibtex_override():
+    root = 'r'
+    path = Path('r/AuthorFoo_-_OnStuff_2021.pdf')
+    no_override_paper, error = parse(path, root, dict())
+    override_paper, error = parse(path, root, {path: 'author2021on-stuff'})
+    assert no_override_paper.bibtex != override_paper.bibtex
+    assert str(override_paper.bibtex) == 'author2021on-stuff'
