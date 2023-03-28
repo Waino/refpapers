@@ -246,6 +246,8 @@ def all_duplicates(conf: Conf, decisions: Decisions):
     sorted_dupes = list(sorted(all_dupes.items(), key=lambda tpl: tpl[1]))
 
     tot = len(sorted_dupes)
+    deletions = 0
+    overrides = 0
     for (i, ((paper_a, paper_b), distance)) in enumerate(sorted_dupes):
         console.print(f'Duplicate {i + 1}/{tot}. Distance: {distance}')
         print_details(paper_a)
@@ -270,9 +272,11 @@ def all_duplicates(conf: Conf, decisions: Decisions):
         if choice == 'delete the 1st paper':
             console.print('[warning]You can delete the 1st file by copypasting this command:[/warning]')
             print(f'rm {paper_a.path}')
+            deletions += 1
         elif choice == 'delete the 2nd paper':
             console.print('[warning]You can delete the 2nd file by copypasting this command:[/warning]')
             print(f'rm {paper_b.path}')
+            deletions += 1
         elif choice == 'ignore it in the future':
             decisions.add(decisions.IGNORE_DUPLICATE, paper_a.path, paper_b.path)
             decisions.write()
@@ -295,15 +299,25 @@ def all_duplicates(conf: Conf, decisions: Decisions):
             if bibtex_b != str(paper_b.bibtex):
                 decisions.add('OVERRIDE_BIBTEX', paper_b.path, bibtex_b)
             decisions.write()
+            overrides += 1
         elif choice == 'skip':
             pass
+    if overrides > 0:
+        console.print('[warning]Remember to run[/warning] "refpapers index --full" [warning]to apply your overrides')
+    elif deletions > 0:
+        console.print('[warning]Remember to run[/warning] "refpapers index" [warning]to apply the removals')
 
 
 @lru_cache(10000)
 def file_hash(path: Path) -> str:
-    if not path.exists():
-        return '__deleted__'
-    result = delegator.run(f'md5sum {q(path)}')
-    if not result.return_code == 0:
-        raise Exception(f'failed {result} {result.err}')
-    return result.out.strip()
+    try:
+        if not path.exists():
+            return '__deleted__'
+        result = delegator.run(f'md5sum {q(path)}')
+        if not result.return_code == 0:
+            raise Exception(f'failed {result} {result.err}')
+        result, _ = result.out.strip().split(' ', 1)
+        return result
+    except Exception:
+        logger.error(f'Unable to compute hash for {path}')
+        return '__error__'
