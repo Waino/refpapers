@@ -1,5 +1,8 @@
+import delegator  # type: ignore
 import Levenshtein
 import random
+from functools import lru_cache
+from pathlib import Path
 from rich.progress import track
 from typing import Sequence, Set, Tuple, List, Union
 from whoosh import index, qparser  # type: ignore
@@ -7,9 +10,11 @@ from whoosh.query import Every  # type: ignore
 from whoosh.sorting import MultiFacet, ScoreFacet, FieldFacet   # type: ignore
 
 from refpapers.conf import Conf, Decisions
-from refpapers.schema import Paper, whoosh_schema
+from refpapers.logger import logger
+from refpapers.schema import Paper, BibtexKey, whoosh_schema
 from refpapers.search import result_to_paper
-from refpapers.view import print_details, question, console
+from refpapers.utils import q
+from refpapers.view import print_details, question, console, prompt
 
 MAX_YEAR_DIFF = 10
 
@@ -245,14 +250,20 @@ def all_duplicates(conf: Conf, decisions: Decisions):
         console.print(f'Duplicate {i + 1}/{tot}. Distance: {distance}')
         print_details(paper_a)
         print_details(paper_b)
-        # TODO: diff file contents
-        # TODO: override bibtex of 1, 2, or both (prompt both)
+        # diff file contents
+        hash_a = file_hash(paper_a.path)
+        hash_b = file_hash(paper_b.path)
+        if hash_a == hash_b:
+            console.print('File contents are [green]exactly the same[/green]')
+        else:
+            console.print('File contents [red]differ[/red]')
         choice = question(
             'How to resolve?',
             {
                 '1': 'delete the 1st paper',
                 '2': 'delete the 2nd paper',
                 'i': 'ignore it in the future',
+                'o': 'override bibtex keys',
                 's': 'skip',
             }
         )
@@ -266,6 +277,33 @@ def all_duplicates(conf: Conf, decisions: Decisions):
             decisions.add(decisions.IGNORE_DUPLICATE, paper_a.path, paper_b.path)
             decisions.write()
             pass
-        # TODO: add choice 'override bibtex keys'
+        elif choice == 'override bibtex keys':
+            bibtex_a = prompt('BibTeX for 1st paper: ', default=str(paper_a.bibtex))
+            try:
+                BibtexKey.parse(bibtex_a)
+            except Exception:
+                logger.error(f'Unable to parse {bibtex_a} as a BibTeX key')
+                continue
+            bibtex_b = prompt('BibTeX for 2nd paper: ', default=str(paper_b.bibtex))
+            try:
+                BibtexKey.parse(bibtex_b)
+            except Exception:
+                logger.error(f'Unable to parse {bibtex_b} as a BibTeX key')
+                continue
+            if bibtex_a != str(paper_a.bibtex):
+                decisions.add('OVERRIDE_BIBTEX', paper_a.path, bibtex_a)
+            if bibtex_b != str(paper_b.bibtex):
+                decisions.add('OVERRIDE_BIBTEX', paper_b.path, bibtex_b)
+            decisions.write()
         elif choice == 'skip':
             pass
+
+
+@lru_cache(10000)
+def file_hash(path: Path) -> str:
+    if not path.exists():
+        return '__deleted__'
+    result = delegator.run(f'md5sum {q(path)}')
+    if not result.return_code == 0:
+        raise Exception(f'failed {result} {result.err}')
+    return result.out.strip()
