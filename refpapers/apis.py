@@ -75,6 +75,8 @@ class CrossrefApi(CachedApi):
     def _fetch(self, doi: str) -> Optional[Dict[str, Any]]:
         """ Returns metadata or None if DOI not found """
         result = self._works.doi(doi)
+        if result is None:
+            return None
         title = ''.join(result.get('title', []))
         subtitle = ''.join(result.get('subtitle', []))
         if subtitle:
