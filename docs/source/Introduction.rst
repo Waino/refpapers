@@ -44,12 +44,12 @@ Features
 * Automatically **retrieve metadata** from several APIs: ArXiv, crossref, Google Scholar.
 * Userfriendly **autocomplete** when manually entering metadata.
 * **Configurable**. Can support any document format, if you provide a tool to extract plain text. 
+* **Deduplication**. If a file with similar metadata is already indexed, a warning is printed. This helps you avoid adding duplicate files.
 
 Planned features
 ~~~~~~~~~~~~~~~~
 
 * BibTeX integration.
-* Improved data quality check, e.g. deduplication.
 
 Features that will not be implemented
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

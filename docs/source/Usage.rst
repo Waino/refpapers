@@ -48,6 +48,8 @@ Subcommands for managing your data
         :alt: Screenshot of metadata autocomplete
 .. image:: figures/inbox.png
         :alt: Screenshot of inbox subcommand
+.. image:: figures/dupecheck.png
+        :alt: Screenshot of duplicate entry detection
 
 refpapers index
 ~~~~~~~~~~~~~~~
@@ -75,6 +77,8 @@ Ingest files in inbox:
 The :code:`--open` flag causes documents to be opened in the viewer before renaming.
 If you have the papers in fresh memory, you can omit this.
 Otherwise, use it to remind yourself what the paper was about.
+
+If a paper with similar metadata is already indexed, a warning will be shown.
 
 refpapers check
 ~~~~~~~~~~~~~~~

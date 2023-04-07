@@ -16,6 +16,7 @@ To enable git-annex, set :code:`use_git: True` and :code:`use_git_annex: True`.
 The former speeds up indexing by using git to track when files in the data directory have changed,
 and the second uses git-annex to synch files across machines.
 It is not recommended to use git without git-annex, as pdfs tend to be quite big.
+Git-annex uses git to index the presence of files but does not store them in the Git history, which works well for large files.
 
 In order for git to track the files, you need to commit them into git (note that :code:`inbox` does this for you).
 The option :code:`git_uncommitted` controls what to do for files that have not been commited:
