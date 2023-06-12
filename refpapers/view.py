@@ -127,7 +127,7 @@ def print_list_section(papers: Iterable[Paper], left_width: int, right_width: in
     console.print(grid)
 
 
-def print_section_heading(heading: Union[str, Iterable[str]], field: str = None) -> None:
+def print_section_heading(heading: Union[str, Iterable[str]], field: Optional[str] = None) -> None:
     if field == 'tags':
         heading = ' / '.join(heading)
     console.rule(f'[rule.line]─ [heading]{heading}[/heading]', align='left')

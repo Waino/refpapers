@@ -241,7 +241,12 @@ def print_count(results):
 
 
 def search(
-    query: str, conf: Conf, decisions: Decisions = None, limit=10, fields: List[str] = None, silent: bool = False
+    query: str,
+    conf: Conf,
+    decisions: Optional[Decisions] = None,
+    limit=10,
+    fields: Optional[List[str]] = None,
+    silent: bool = False
 ) -> Generator[Paper, None, None]:
     if fields is None:
         fields = ["bibtex", "authors", "title", "comment", "body"]
