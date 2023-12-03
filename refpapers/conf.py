@@ -5,7 +5,7 @@ import yaml
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from pydantic import BaseModel, validator, root_validator
+from pydantic import BaseModel, field_validator, model_validator, ValidationError
 from typing import Dict, Generator, Optional, Set, Tuple, Sequence
 
 from refpapers.logger import add_file_handler
@@ -22,11 +22,11 @@ DEFAULT_CONFDIR = Path(HOMEDIR) / '.refpapers'
 class Paths(BaseModel):
     index: Path
     data: Path
-    log: Optional[Path]
-    api_cache: Optional[Path]
-    confdir: Optional[Path]
+    log: Optional[Path] = None
+    api_cache: Optional[Path] = None
+    confdir: Optional[Path] = None
 
-    @validator('*', pre=True)
+    @field_validator('*', mode='before')
     def expanduser(value):
         return Path(os.path.expanduser(value))
 
@@ -53,26 +53,16 @@ class Software(BaseModel):
             extractor = default
         return extractor
 
-    @validator('*', pre=True)
+    @field_validator('*', mode='before')
     def strip_dots(value):
         out = {key.strip('.'): val for key, val in value.items()}
         return out
 
 
 class GitNew(Enum):
-    WARN = 1
-    IGNORE = 2
-    ADD = 3
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not isinstance(v, str):
-            raise TypeError('Enum values must be given as strings')
-        return cls.__getattr__(v)
+    WARN = "WARN"
+    IGNORE = "IGNORE"
+    ADD = "ADD"
 
 
 class Conf(BaseModel):
@@ -110,10 +100,10 @@ class Conf(BaseModel):
         return endings
 
     # validators
-    @root_validator
+    @model_validator(mode='after')
     def check_git(cls, values):
-        if values.get('use_git_annex') and not values.get('use_git'):
-            raise ValueError('use_git_annex requires use_git')
+        if values.use_git_annex and not values.use_git:
+            raise ValidationError('use_git_annex requires use_git')
         return values
 
 
