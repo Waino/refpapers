@@ -1,8 +1,8 @@
 import delegator  # type: ignore
-import Levenshtein
 import random
 from functools import lru_cache
 from pathlib import Path
+from rapidfuzz.distance import Levenshtein
 from rich.progress import track
 from typing import Sequence, Set, Tuple, List, Union
 from whoosh import index, qparser  # type: ignore
