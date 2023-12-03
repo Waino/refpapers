@@ -11,13 +11,13 @@ from refpapers.utils import JsonFileCache
 
 
 def paper_from_metadata(meta: Dict[str, Any], path: Path, max_authors: int = -1) -> Optional[Paper]:
+    if any(not meta[field] for field in ('authors', 'title', 'year')):
+        return None
     authors = meta['authors']
     if max_authors and max_authors > 1:
         # replace too many authors with etAl
         if len(authors) > max_authors:
             authors = authors[:(max_authors - 1)] + ['etAl']
-    if not meta['title']:
-        return None
     if len(authors) == 0:
         return None
     bibtex = BibtexKey(authors[0].lower(), meta['year'], BibtexKey.title_word(meta['title']))
